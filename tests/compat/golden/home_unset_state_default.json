@@ -1,0 +1,7 @@
+{
+ "files": {},
+ "status": 1,
+ "stderr": "error: $HOME is not defined\n",
+ "stdout": "",
+ "trace": []
+}

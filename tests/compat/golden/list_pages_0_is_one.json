@@ -1,0 +1,33 @@
+{
+ "files": {
+  "state.json": "{\"entries\": {\"did:d\": {\"handle\": \"d.test\", \"decision\": \"kept\", \"at\": \"2024-05-01T10:00:00Z\"}, \"did:e\": {\"handle\": \"e.test\", \"decision\": \"skipped\", \"at\": \"2024-05-01T10:00:00.123456789+02:00\"}}}"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "a.test                           via @r1.test, @r2.test                       13mo  first post by A\ng.test                           via @r3.test                                 13mo  [reply] reply with a card \u2197 Example Title https://example.com/a\n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.feed.getTimeline",
+   "query": {
+    "limit": [
+     "100"
+    ]
+   }
+  }
+ ]
+}

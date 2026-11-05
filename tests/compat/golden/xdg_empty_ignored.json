@@ -1,0 +1,33 @@
+{
+ "files": {
+  "home/.local/state/bskyban/state.json": "{\"entries\": {\"did:a\": {\"handle\": \"a.test\", \"decision\": \"kept\", \"at\": \"2024-05-01T10:00:00Z\"}}}"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "l.test                           via @r1.test                                 13mo  from l\n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.feed.getTimeline",
+   "query": {
+    "limit": [
+     "100"
+    ]
+   }
+  }
+ ]
+}

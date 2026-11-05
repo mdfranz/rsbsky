@@ -1,0 +1,63 @@
+{
+ "files": {
+  "state.json": "{\"entries\": {\"did:d\": {\"handle\": \"d.test\", \"decision\": \"kept\", \"at\": \"2024-05-01T10:00:00Z\"}, \"did:e\": {\"handle\": \"e.test\", \"decision\": \"skipped\", \"at\": \"2024-05-01T10:00:00.123456789+02:00\"}}}"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "{\"did\":\"did:a\",\"displayName\":\"Alice\",\"handle\":\"a.test\",\"repostedBy\":[\"r1.test\",\"r2.test\"],\"text\":\"first post by A\"}\n{\"did\":\"did:e\",\"displayName\":\"Eve\",\"handle\":\"e.test\",\"repostedBy\":[\"r2.test\"],\"text\":\"skipped author\"}\n{\"did\":\"did:g\",\"displayName\":\"Gus\",\"handle\":\"g.test\",\"repostedBy\":[\"r3.test\"],\"text\":\"reply with a card\"}\n{\"did\":\"did:h\",\"displayName\":\"Hal\",\"handle\":\"h.test\",\"repostedBy\":[\"r3.test\"],\"text\":\"quote \\u0026 video \\u003cb\\u003e\"}\n{\"did\":\"did:i\",\"displayName\":\"I\u00f1\u00e9s \u65e5\u672c\u8a9e\",\"handle\":\"i.test\",\"repostedBy\":[\"r2.test\"],\"text\":\"h\u00e9llo https://example.com/very/long/path tail \u2713\"}\n{\"did\":\"did:j\",\"displayName\":\"Jox\",\"handle\":\"j.test\",\"repostedBy\":[\"r1.test\"],\"text\":\"bell\\u0007 esc\\u001b[31mred\\u001b[0m\\ttab\"}\n{\"did\":\"did:k\",\"displayName\":\"Kim\",\"handle\":\"k.test\",\"repostedBy\":[\"r1.test\"],\"text\":\"\"}\n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.feed.getTimeline",
+   "query": {
+    "limit": [
+     "100"
+    ]
+   }
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.feed.getTimeline",
+   "query": {
+    "cursor": [
+     "p2"
+    ],
+    "limit": [
+     "100"
+    ]
+   }
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.feed.getTimeline",
+   "query": {
+    "cursor": [
+     "p3"
+    ],
+    "limit": [
+     "100"
+    ]
+   }
+  }
+ ]
+}

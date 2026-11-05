@@ -1,0 +1,9 @@
+{
+ "files": {
+  "state.json/x": "y"
+ },
+ "status": 1,
+ "stderr": "error: read {TMP}/state.json: is a directory\n",
+ "stdout": "",
+ "trace": []
+}

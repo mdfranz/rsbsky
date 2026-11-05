@@ -1,0 +1,33 @@
+{
+ "files": {
+  "state.json": "{\"x\":1,\"entries\":{\"did:a\":{\"decision\":\"kept\",\"zzz\":[1]}}}"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.feed.getTimeline",
+   "query": {
+    "limit": [
+     "100"
+    ]
+   }
+  }
+ ]
+}

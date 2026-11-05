@@ -1,0 +1,9 @@
+{
+ "files": {
+  "state.json": "[]"
+ },
+ "status": 1,
+ "stderr": "error: json: cannot unmarshal array into Go value of type store.State\n",
+ "stdout": "",
+ "trace": []
+}

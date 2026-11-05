@@ -1,0 +1,9 @@
+{
+ "files": {
+  "state.json": "{\"entries\":{"
+ },
+ "status": 1,
+ "stderr": "error: unexpected end of JSON input\n",
+ "stdout": "",
+ "trace": []
+}

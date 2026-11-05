@@ -1,0 +1,19 @@
+{
+ "files": {},
+ "status": 1,
+ "stderr": "error: login: com.atproto.server.createSession: Invalid identifier or password (AuthenticationRequired)\n",
+ "stdout": "",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  }
+ ]
+}
