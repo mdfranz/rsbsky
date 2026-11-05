@@ -120,7 +120,8 @@ def run_case(case, binary, go_syntax=False):
                 f.write(content if isinstance(content, str) else json.dumps(content))
         env = {"PATH": "/usr/bin:/bin", "HOME": os.path.join(tmp, "home"), "BSKY_HANDLE": "me.test",
                "BSKY_APP_PASSWORD": "pw", "BSKY_PDS": pds.url, "BSKYBAN_STATE": os.path.join(tmp, "state.json"),
-               "BSKYBAN_AUDIT": os.path.join(tmp, "audit.jsonl"), "TERM": "xterm"}
+               "BSKYBAN_AUDIT": os.path.join(tmp, "audit.jsonl"), "TERM": "xterm",
+               "TZ": "UTC"}  # `log` prints local times: pin the zone so goldens do not depend on the machine
         for k, v in case.get("env", {}).items():
             if v is None:
                 env.pop(k, None)

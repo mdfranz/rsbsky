@@ -8,6 +8,6 @@
  },
  "status": 0,
  "stderr": "",
- "stdout": "2024-01-03 19:00:00  keep     @carol.test                        cli  [dry-run]\n",
+ "stdout": "2024-01-04 00:00:00  keep     @carol.test                        cli  [dry-run]\n",
  "trace": []
 }

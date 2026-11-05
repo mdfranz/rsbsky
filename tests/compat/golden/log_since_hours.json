@@ -8,6 +8,6 @@
  },
  "status": 0,
  "stderr": "",
- "stdout": "not a time  post     @me.test                           cli  (weird <&>)\n2098-12-31 19:00:00  baseline @                                  cli  (3 followers marked as old)\n",
+ "stdout": "not a time  post     @me.test                           cli  (weird <&>)\n2099-01-01 00:00:00  baseline @                                  cli  (3 followers marked as old)\n",
  "trace": []
 }

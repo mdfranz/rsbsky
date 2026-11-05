@@ -1,6 +1,6 @@
 {
  "files": {
-  "audit.jsonl": "{\"ts\": \"<NOW>\", \"action\": \"block\", \"did\": \"did:newbie\", \"handle\": \"newbie.test\", \"source\": \"cli\", \"record\": \"at://did:me/app.bsky.graph.block/new1\", \"ok\": true, \"snapshot\": {\"createdAt\": \"2025-10-01T02:05:27.000Z\", \"posts\": 10, \"followers\": 20, \"following\": 30, \"avatar\": true, \"bio\": \"Bio of newbie\"}}\n",
+  "audit.jsonl": "{\"ts\": \"<NOW>\", \"action\": \"block\", \"did\": \"did:newbie\", \"handle\": \"newbie.test\", \"source\": \"cli\", \"record\": \"at://did:me/app.bsky.graph.block/new1\", \"ok\": true, \"snapshot\": {\"createdAt\": \"2025-10-01T02:27:32.000Z\", \"posts\": 10, \"followers\": 20, \"following\": 30, \"avatar\": true, \"bio\": \"Bio of newbie\"}}\n",
   "state.json": "{\"entries\": {\"did:newbie\": {\"handle\": \"newbie.test\", \"decision\": \"blocked\", \"at\": \"<NOW>\"}}}"
  },
  "modes": {

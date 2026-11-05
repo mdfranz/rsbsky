@@ -10,6 +10,6 @@
  },
  "status": 0,
  "stderr": "",
- "stdout": "2024-01-01 05:00:00  block    @alice.test                        cli\n2024-01-02 06:30:05  follow   @bob.test                          tui:following  via @carol.test\n2024-01-03 07:00:00  unblock  @alice.test                        tui:reposts  FAILED: boom  (lifted by kept)\n2024-01-03 19:00:00  keep     @carol.test                        cli  [dry-run]\nnot a time  post     @me.test                           cli  (weird <&>)\n2098-12-31 19:00:00  baseline @                                  cli  (3 followers marked as old)\n",
+ "stdout": "2024-01-01 10:00:00  block    @alice.test                        cli\n2024-01-02 11:30:05  follow   @bob.test                          tui:following  via @carol.test\n2024-01-03 12:00:00  unblock  @alice.test                        tui:reposts  FAILED: boom  (lifted by kept)\n2024-01-04 00:00:00  keep     @carol.test                        cli  [dry-run]\nnot a time  post     @me.test                           cli  (weird <&>)\n2099-01-01 00:00:00  baseline @                                  cli  (3 followers marked as old)\n",
  "trace": []
 }
