@@ -13,3 +13,4 @@ export BSKY_HANDLE=you.bsky.social BSKY_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
 cargo run -- feed --list --backlog
 ```
 Checks: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`.
+# rsbsky
