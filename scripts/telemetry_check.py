@@ -17,12 +17,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from compat import FakePDS  # noqa: E402
 from compat_cases import entry, tl, prof, pr, create, delete, BLOCK, P_NEW, R1, A, B, TIMELINE, STATE  # noqa: E402
+from tui_check import timeline as tui_timeline, detail_routes  # noqa: E402
 
 FAILS = []
 TOKEN = "pylf_v1_us_TELEMETRYTESTSECRET0123456789"
 # Everything that identifies the user, their account, or the people they act on.
 SECRETS = [b"pw", b"Bearer", b"TOKEN", b"JWT", b"me.test", b"did:me", b"did:a", b"did:newbie", b"newbie",
-           b"a.test", b"first post by A", b"Alice", b"app.bsky.graph.block/", b"password", b"identifier"]
+           b"a.test", b"first post by A", b"Alice", b"app.bsky.graph.block/", b"password", b"identifier",
+           # the PDS host, and the dependencies' connection-level debug events that mention it
+           b"127.0.0.1", b"localhost", b"bsky.social", b"connecting to", b"idle connection", b"Http::connect",
+           b"CA root certificates", b"hyper", b"rustls"]
 
 
 def check(name, ok, detail=""):
@@ -109,7 +113,7 @@ def main():
     ap.add_argument("--disabled", action="store_true", help="binary built with --no-default-features: must never export")
     args = ap.parse_args()
     binp = os.path.abspath(args.bin)
-    routes = list(TIMELINE) + [P_NEW, create(BLOCK, "at://did:me/app.bsky.graph.block/new1"), delete(BLOCK)]
+    routes = list(TIMELINE) + tui_timeline() + detail_routes() + [P_NEW, create(BLOCK, "at://did:me/app.bsky.graph.block/new1"), delete(BLOCK)]
     pds = FakePDS(routes)
     col = Collector()
     tel = {"LOGFIRE_TOKEN": TOKEN, "LOGFIRE_BASE_URL": col.url}
@@ -203,7 +207,7 @@ def main():
         check("TUI output has no logfire / opentelemetry text", not re.search(rb"logfire|opentelemetry|otel|WARN|INFO ", screen["bytes"], re.I), screen["bytes"][:300])
         time.sleep(0.5)
         names = span_names_in(col.traces())
-        check("TUI exports session and background-work spans", {"feed session", "load timeline page", "xrpc"} <= names, names)
+        check("TUI exports session and background-work spans", {"feed session", "load timeline page", "xrpc", "refresh check", "moderation action", "fetch profile", "fetch recent posts"} <= names, names)
         leaked = [s.decode() for s in SECRETS if s in col.everything()]
         check("TUI exports contain no identities", not leaked, leaked)
         dead_screen = tui_run(binp, pds, dead, tmp())
@@ -250,9 +254,15 @@ def tui_run(binp, pds, extra_env, tmp):
                 buf += chunk
 
     read(2.0)
-    os.write(master, b"\x1b[B")
+    os.write(master, b"\x1b[B")  # Down
+    read(0.4)
+    os.write(master, b"\x1b[C")  # Right: detail view, prefetches profiles
+    read(1.0)
+    os.write(master, b"\x1b")  # Esc
+    read(0.3)
+    os.write(master, b"k")  # keep: a local decision, traced as a moderation action
     read(0.6)
-    os.write(master, b"\x1b[C")  # open the detail view: profile fetches
+    os.write(master, b"R")  # manual refresh
     read(1.0)
     t0 = time.time()
     os.write(master, b"q")

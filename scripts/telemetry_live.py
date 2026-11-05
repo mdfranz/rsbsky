@@ -14,6 +14,7 @@ sys.path.insert(0, HERE)
 from compat import FakePDS  # noqa: E402
 from compat_cases import TIMELINE, P_NEW, create, delete, BLOCK  # noqa: E402
 from telemetry_check import run, tui_run  # noqa: E402
+from tui_check import timeline as tui_timeline, detail_routes  # noqa: E402
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--bin", required=True)
@@ -22,7 +23,7 @@ token = os.environ.get("LOGFIRE_TOKEN", "")
 if not token.strip():
     sys.exit("LOGFIRE_TOKEN is not set")
 
-pds = FakePDS(list(TIMELINE) + [P_NEW, create(BLOCK, "at://did:me/app.bsky.graph.block/new1"), delete(BLOCK)])
+pds = FakePDS(list(TIMELINE) + tui_timeline() + detail_routes() + [P_NEW, create(BLOCK, "at://did:me/app.bsky.graph.block/new1"), delete(BLOCK)])
 env = {"LOGFIRE_TOKEN": token, "LOGFIRE_ENVIRONMENT": "rsbsky-dev-check"}
 tmps = [tempfile.mkdtemp(prefix="telemetry-live-") for _ in range(4)]
 try:

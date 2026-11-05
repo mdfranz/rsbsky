@@ -93,6 +93,10 @@ fn configure() -> Result<logfire::Logfire, logfire::ConfigureError> {
     // LOGFIRE_SEND_TO_LOGFIRE (e.g. `no`). A token is already known to be present.
     let mut b = logfire::configure()
         .with_service_version(env!("CARGO_PKG_VERSION"))
+        // The SDK defaults to TRACE when exporting, which would also ship hyper's and rustls's
+        // connection-level events (hostnames, IP addresses, ports). Our spans are INFO; RUST_LOG
+        // still overrides this for anyone who wants to debug.
+        .with_default_level_filter(tracing::level_filters::LevelFilter::INFO)
         .with_console(None); // a full-screen TUI must never share the terminal with log output
     if std::env::var_os("LOGFIRE_SERVICE_NAME").is_none() {
         b = b.with_service_name("rsbsky");
