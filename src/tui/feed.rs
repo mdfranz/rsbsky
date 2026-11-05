@@ -957,6 +957,7 @@ impl FeedApp {
                 Vec::new()
             }
             Msg::AuditFailed(e) => {
+                tracing::warn!("audit log write failed");
                 if self.err.is_none() {
                     self.err = Some(format!("audit log: {e}"));
                 }

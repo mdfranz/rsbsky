@@ -5,5 +5,6 @@ pub mod bsky;
 pub mod cli;
 pub mod commands;
 pub mod store;
+pub mod telemetry;
 pub mod termtext;
 pub mod tui;

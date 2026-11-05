@@ -32,5 +32,13 @@ pub async fn run_feed(app: App, opts: FeedOptions) -> std::io::Result<()> {
         &app.client.handle,
         app.state,
     );
-    runtime::run(feed, app.client, app.audit).await
+    use tracing::Instrument;
+    let span = tracing::info_span!(
+        "feed session",
+        logfire.msg = "feed session",
+        refresh_secs = opts.refresh.as_secs()
+    );
+    runtime::run(feed, app.client, app.audit)
+        .instrument(span)
+        .await
 }

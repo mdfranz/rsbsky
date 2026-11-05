@@ -261,13 +261,15 @@ def main():
 
     # ---- 9. panic restores the terminal
     if a.panic_bin:
-        e = Env([])
-        start(e, os.path.abspath(a.panic_bin))
-        check("panic example ran and the shell came back", wait_for(lambda: "EXIT=101" in screen(), 5), screen())
-        s = screen()
-        check("panic message is readable (not swallowed by the alternate screen)", "deliberate panic" in s, s)
-        check("panic restored alternate screen and cursor", flag("#{alternate_on}") == "0" and flag("#{cursor_flag}") == "1")
-        e.close()
+        # once plain, once with Logfire telemetry on (it installs its own panic hook first)
+        for label, extra in (("", {}), (" with LOGFIRE_TOKEN", {"LOGFIRE_TOKEN": "pylf_v1_us_panicTest", "LOGFIRE_BASE_URL": "http://127.0.0.1:1"})):
+            e = Env([], extra)
+            start(e, os.path.abspath(a.panic_bin))
+            check("panic example ran and the shell came back" + label, wait_for(lambda: "EXIT=101" in screen(), 8), screen())
+            s = screen()
+            check("panic message is readable (not swallowed by the alternate screen)" + label, "deliberate panic" in s, s)
+            check("panic restored alternate screen and cursor" + label, flag("#{alternate_on}") == "0" and flag("#{cursor_flag}") == "1")
+            e.close()
 
     # ---- 9b. post detail view: panels, navigation, picker, images, browser launch
     log = tempfile.mktemp(prefix="browserlog-")

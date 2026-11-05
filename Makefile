@@ -2,7 +2,7 @@ BIN := rsbsky
 # Go baseline binary for capture / diff / roundtrip (build it with `make -C ../bskyban`)
 GO_BIN ?= ../bskyban/bskyban
 
-.PHONY: all build release run test check fmt clippy compat compat-diff compat-capture tui-check roundtrip install clean help
+.PHONY: all build release run test check fmt clippy compat compat-diff compat-capture tui-check telemetry-check roundtrip install clean help
 
 all: fmt clippy build ## format, lint, build
 
@@ -41,6 +41,12 @@ compat-capture: ## refresh tests/compat/golden/ from the Go baseline (needs GO_B
 tui-check: ## slow real-terminal suite: tmux + pty (add GO_BIN to also check Go reads our audit log)
 	cargo build --examples
 	python3 scripts/tui_check.py --bin target/debug/$(BIN) --panic-bin target/debug/examples/panic_restore $(if $(wildcard $(GO_BIN)),--go-bin $(GO_BIN),)
+
+telemetry-check: ## Logfire export vs a fake collector, with and without the `logfire` feature
+	cargo build
+	python3 scripts/telemetry_check.py --bin target/debug/rsbsky
+	CARGO_TARGET_DIR=target/no-logfire cargo build --no-default-features
+	python3 scripts/telemetry_check.py --bin target/no-logfire/debug/rsbsky --disabled
 
 roundtrip: build ## Go <-> Rust round trips over shared state/audit files (needs GO_BIN)
 	python3 scripts/roundtrip.py --go-bin $(GO_BIN) --bin target/debug/$(BIN)

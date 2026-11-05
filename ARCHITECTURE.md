@@ -167,7 +167,15 @@ Bluesky text is untrusted in a terminal. `sanitize` strips ANSI sequences (a sta
 
 `o` / Enter builds `post_links` for the selected post in a fixed order: the post on bsky.app, its link card, URLs in the text, the quoted post, mentioned accounts, the author's profile; duplicates are dropped. `i` opens every image. Both run `$BROWSER` (first colon-separated entry, `%s` marks the URL) or `open` / `xdg-open`, with stdin/stdout/stderr detached so the launcher cannot draw over the TUI, and the child reaped on a background thread.
 
-### 8. Themes (`src/tui/theme.rs`)
+### 8. Observability (`src/telemetry.rs`)
+
+The code is instrumented with `tracing` spans: a `command` span around each run (name and exit code), an `xrpc` span inside `Client::send` (operation, HTTP status, outcome, XRPC error code), and spans for each TUI background task (`load timeline page`, `refresh check`, `moderation action`, `fetch profile`, `load follows page`) under a `feed session` span. These cost almost nothing on their own.
+
+`Telemetry::init` installs the Logfire exporter **only if `LOGFIRE_TOKEN` is non-empty** (and the `logfire` feature is compiled in). It disables the console exporter so the TUI is never drawn over, leaves `LOGFIRE_SEND_TO_LOGFIRE` to the user, and sets `service.name=rsbsky` and `service.version` unless overridden. `real_main` calls `Telemetry::shutdown` before returning because `main` ends the process with `std::process::exit`; the flush runs on a helper thread and is abandoned after 3 seconds, so an unreachable collector cannot hang the CLI. Logfire's panic hook is installed before the TUI's, so on a panic the terminal is restored first and then the hook chain continues.
+
+**Privacy by construction.** Spans carry only operation names, status codes, outcomes, error codes, counts and durations. Request URLs, queries and bodies (which hold the app password, DIDs and handles), tokens, post text and API error *messages* are never recorded. `scripts/telemetry_check.py` enforces this against a fake OTLP collector: it greps every exported byte for the password, bearer token, handles, DIDs and post text used by the fixtures.
+
+### 9. Themes (`src/tui/theme.rs`)
 
 `auto`, `dark`, `light`, `ansi`, `dracula`, `catppuccin`. `--theme` wins over `BSKYBAN_THEME`, which wins over `auto`; names are case-insensitive. `NO_COLOR` clears every colour but keeps bold/italic/reverse and the `▸` marker. Adaptive colours need to know if the background is dark; the Go tool asks the terminal, rsbsky reads `COLORFGBG` and defaults to dark, which avoids a terminal query. `rsbsky themes` prints a preview that matches Go's byte for byte when piped.
 
@@ -188,6 +196,7 @@ Bluesky text is untrusted in a terminal. `sanitize` strips ANSI sequences (a sta
 - **Everything is reversible and recorded.** Decisions can be undone; every attempt, including failures and dry runs, is in the audit log with the profile as it was.
 - **Remote data is untrusted.** Text is sanitized at the edge (JSON decoding, error messages) and again before display; styling and hyperlinks are added only to clean text, and link targets containing control characters are never emitted.
 - **Local state cannot be half-written or silently diverge.** Atomic rename, append-only audit, in-memory rollback when a save fails, and a retry path when a save fails after a remote success.
+- **Observability is opt-in and invisible.** Nothing is exported without `LOGFIRE_TOKEN`; with it, output, exit status and the screen are unchanged and identities are never sent.
 - **Terminal hygiene.** The terminal is restored after quit, Ctrl+C, SIGTERM, runtime errors and panics; startup sends no queries; hyperlinks are cleared when they go away.
 - **Known duplication** (inherited from Go): the headless commands and the TUI each implement "decide about an account" (`commands::Ctx::act` and `tui::actions`) and share only the helpers in `app.rs`.
 
@@ -198,6 +207,7 @@ Bluesky text is untrusted in a terminal. `sanitize` strips ANSI sequences (a sta
 - **Unit tests** in each module: the `FeedApp` state machine (navigation, load-more, refresh ordering, deduplication, gaps, stale results, audit de-duplication, detail view, picker, every decision key path with failure injection), layout snapshots in `render.rs` (list, two-panel, stacked, scrolled, picker, follows browser, footers), `links.rs` bytes, `state`/`audit` files (modes, round trips, rollback), `termtext` against Go's output.
 - **wiremock tests** (`tests/client.rs`, `tests/actions.rs`): the exact requests the client and `run_act` send, in order, and what happens when a step fails.
 - **The compatibility matrix** (`tests/compat.rs` -> `scripts/compat.py check`): about 170 cases run the binary against a scripted fake PDS and compare stdout, stderr, exit status, the request trace with bodies, the files left behind and their modes with golden outputs captured from the Go binary.
+- **Telemetry** (`tests/telemetry.rs` -> `scripts/telemetry_check.py`): a fake OTLP collector verifies inertness without a token, authenticated export with one, no identities in any exported byte, unchanged behaviour, and no hang or screen output when the collector is down. `make telemetry-check` also covers the `--no-default-features` build.
 - **Terminal bytes** (`tests/tui_pty.rs`): OSC 8 output, no startup queries, clean shutdown sequence, on a raw pty.
 
 Slower or tool-dependent checks are separate: `make tui-check` (tmux: restoration after quit / Ctrl+C / SIGTERM / panic / slow HTTP, resize, `NO_COLOR`, refresh, decisions, read-only state directory with `r` recovery, quitting during an action), `make compat-diff` (Go and Rust live), and `make roundtrip` (Go and Rust alternately writing the same state and audit files).

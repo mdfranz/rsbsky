@@ -10,11 +10,13 @@ use std::time::Duration;
 use chrono::{DateTime, Utc};
 use clap::{Args, Parser, Subcommand};
 use serde::Serialize;
+use tracing::Instrument;
 
 use crate::app::App;
 use crate::bsky::{self, Client, Post};
 use crate::commands;
 use crate::store::{self, State};
+use crate::telemetry::Telemetry;
 use crate::termtext::{collapse_ws, human_age, sanitize, truncate_width};
 use crate::tui::{self, theme};
 
@@ -250,11 +252,60 @@ pub fn env_on(name: &str) -> bool {
     )
 }
 
+impl Cli {
+    /// The command being run, for telemetry (never includes arguments or identifiers).
+    pub fn command_name(&self) -> &'static str {
+        match &self.command {
+            None | Some(Cmd::Feed(_)) => "feed",
+            Some(Cmd::Review(_)) => "review",
+            Some(Cmd::Posts(_)) => "posts",
+            Some(Cmd::List(_)) => "list",
+            Some(Cmd::Log(_)) => "log",
+            Some(Cmd::Themes) => "themes",
+            Some(Cmd::Baseline) => "baseline",
+            Some(Cmd::Show { .. }) => "show",
+            Some(Cmd::Block(_)) => "block",
+            Some(Cmd::Unblock(_)) => "unblock",
+            Some(Cmd::Follow(_)) => "follow",
+            Some(Cmd::Unfollow(_)) => "unfollow",
+            Some(Cmd::Keep(_)) => "keep",
+            Some(Cmd::Post(_)) => "post",
+            Some(Cmd::DeletePost(_)) => "delete-post",
+            Some(Cmd::Like(_)) => "like",
+            Some(Cmd::Unlike(_)) => "unlike",
+        }
+    }
+}
+
 /// Entry point: returns the process exit status.
+///
+/// Telemetry (if `LOGFIRE_TOKEN` is set) is started here and flushed before returning,
+/// because `main` ends the process with `std::process::exit`, which skips destructors.
 pub async fn real_main() -> i32 {
     let cli = Cli::parse();
-    let mut stdout = std::io::stdout();
-    match run(cli, &mut stdout).await {
+    let telemetry = Telemetry::init();
+    let name = cli.command_name();
+    let span = tracing::info_span!(
+        "command",
+        logfire.msg = %format_args!("rsbsky {name}"),
+        command = name,
+        exit_code = tracing::field::Empty,
+    );
+    let code = {
+        let mut stdout = std::io::stdout();
+        run_reporting(cli, &mut stdout)
+            .instrument(span.clone())
+            .await
+    };
+    span.record("exit_code", code);
+    drop(span);
+    telemetry.shutdown();
+    code
+}
+
+/// Runs the command and prints its failure, returning the exit status.
+async fn run_reporting(cli: Cli, out: &mut dyn Write) -> i32 {
+    match run(cli, out).await {
         Ok(()) => 0,
         Err(CliError::Plain(m)) => {
             eprintln!("{m}");

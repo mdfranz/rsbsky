@@ -1,6 +1,6 @@
 # 3rd Party Dependencies
 
-This document lists and classifies the crates `rsbsky` depends on (see `Cargo.toml`; `Cargo.lock` pins the full tree). Bluesky is reached with `reqwest` and `serde_json` against the AT Protocol XRPC endpoints, with no Bluesky SDK, the same approach as the Go original (`../bskyban`). The edition is 2024, so a Rust toolchain of 1.85 or newer is required (developed on 1.96).
+This document lists and classifies the crates `rsbsky` depends on (see `Cargo.toml`; `Cargo.lock` pins the full tree). Bluesky is reached with `reqwest` and `serde_json` against the AT Protocol XRPC endpoints, with no Bluesky SDK, the same approach as the Go original (`../bskyban`). The edition is 2024 and the `logfire` crate needs Rust 1.91, so `rust-version = "1.91"` (developed on 1.96).
 
 ## Terminal UI
 
@@ -26,6 +26,11 @@ This document lists and classifies the crates `rsbsky` depends on (see `Cargo.to
 *   **[clap](https://github.com/clap-rs/clap)** (4, `derive`, `env`): subcommands, flags, `--help` and usage errors (exit code 2). Flag syntax follows clap conventions rather than Go's `flag` package; the environment variables are read by hand so their semantics (empty means unset, `XDG_STATE_HOME` only if absolute) match the Go tool exactly. See `docs/compat.md`.
 *   **[humantime](https://github.com/chronotope/humantime)**: duration syntax for `--refresh` (`30s`, `1m30s`) and `log --since`.
 
+## Observability (optional)
+
+*   **[tracing](https://github.com/tokio-rs/tracing)**: the instrumentation API. Commands, API requests and the TUI's background tasks are wrapped in spans (`src/cli.rs`, `src/bsky/client.rs`, `src/tui/runtime.rs`). With no subscriber installed these are close to free, so the code is instrumented unconditionally.
+*   **[logfire](https://github.com/pydantic/logfire-rust)** (0.13, optional `logfire` feature, on by default): the Pydantic Logfire SDK, an OpenTelemetry wrapper that installs a `tracing` subscriber and exports over OTLP/HTTP from its own background thread. `src/telemetry.rs` configures it **only when `LOGFIRE_TOKEN` is non-empty**, with the console exporter disabled. It brings OpenTelemetry (`opentelemetry`, `opentelemetry_sdk`, `opentelemetry-otlp`, ...) and shares our `reqwest`/`rustls`. Measured cost: +2.9 MB in the release binary (11.3 -> 14.2 MB) and +42 crates; `--no-default-features` removes all of it.
+
 ## Testing (dev-dependencies)
 
 *   **[wiremock](https://github.com/LukeMathWalker/wiremock-rs)**: a fake PDS for `tests/client.rs` and `tests/actions.rs`. It asserts the exact requests (paths, query, bodies, bearer token) and that read-only paths never mutate.
@@ -33,7 +38,7 @@ This document lists and classifies the crates `rsbsky` depends on (see `Cargo.to
 
 ## Test tooling that is not a crate
 
-*   **Python 3** (standard library only) runs `scripts/compat.py` (the executable compatibility matrix and its fake PDS), `scripts/tui_check.py` and `scripts/roundtrip.py`. `cargo test` runs the matrix and the fast terminal-bytes check; the slow suite is `make tui-check`.
+*   **Python 3** (standard library only) runs `scripts/telemetry_check.py` (a fake OTLP collector), `scripts/compat.py` (the executable compatibility matrix and its fake PDS), `scripts/tui_check.py` and `scripts/roundtrip.py`. `cargo test` runs the matrix and the fast terminal-bytes check; the slow suite is `make tui-check`.
 *   **tmux** drives the real-terminal suite (screen contents, alternate screen, cursor visibility, tty modes). Optional: those tests are skipped or `#[ignore]`d without it.
 *   **The Go `bskyban` binary** is the oracle for `make compat-capture`, `compat-diff` and `roundtrip`. It is not needed to run `cargo test`: the golden outputs it produced are checked in under `tests/compat/golden/`.
 

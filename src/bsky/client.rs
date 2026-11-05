@@ -3,6 +3,7 @@ use std::time::Duration;
 use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use tracing::Instrument;
 
 use crate::termtext::sanitize;
 
@@ -54,18 +55,44 @@ impl Client {
         u
     }
 
+    /// Sends a request. Telemetry (when a subscriber is installed) records only the operation
+    /// name, status, outcome and, for API errors, the XRPC error *code*: never the URL, query,
+    /// body, tokens or error messages, which can contain handles and DIDs.
     async fn send(&self, nsid: &str, req: reqwest::RequestBuilder) -> Result<Vec<u8>, Error> {
+        let span = tracing::info_span!(
+            "xrpc",
+            logfire.msg = %format_args!("xrpc {nsid}"),
+            nsid,
+            http.response.status_code = tracing::field::Empty,
+            outcome = tracing::field::Empty,
+            error.code = tracing::field::Empty,
+        );
+        self.send_inner(nsid, req, &span)
+            .instrument(span.clone())
+            .await
+    }
+
+    async fn send_inner(
+        &self,
+        nsid: &str,
+        req: reqwest::RequestBuilder,
+        span: &tracing::Span,
+    ) -> Result<Vec<u8>, Error> {
         let req = if self.jwt.is_empty() {
             req
         } else {
             req.bearer_auth(&self.jwt)
         };
-        let resp = req.send().await.map_err(|e| Error::Transport(chain(&e)))?;
+        let resp = req.send().await.map_err(|e| {
+            span.record("outcome", "transport_error");
+            Error::Transport(chain(&e))
+        })?;
         let status = resp.status();
-        let data = resp
-            .bytes()
-            .await
-            .map_err(|e| Error::Transport(chain(&e)))?;
+        span.record("http.response.status_code", status.as_u16());
+        let data = resp.bytes().await.map_err(|e| {
+            span.record("outcome", "transport_error");
+            Error::Transport(chain(&e))
+        })?;
         if status != StatusCode::OK {
             let v: Value = serde_json::from_slice(&data).unwrap_or(Value::Null);
             let field = |name: &str| -> String {
@@ -76,12 +103,17 @@ impl Client {
                     .to_string()
             };
             let (err, msg) = (field("error"), field("message"));
+            span.record("outcome", "api_error");
+            if !err.is_empty() {
+                span.record("error.code", sanitize(&err).as_str());
+            }
             return Err(Error::Api(if err.is_empty() {
                 format!("{nsid}: HTTP {}", status.as_u16())
             } else {
                 format!("{nsid}: {} ({})", sanitize(&msg), sanitize(&err))
             }));
         }
+        span.record("outcome", "ok");
         Ok(data.to_vec())
     }
 

@@ -62,6 +62,9 @@ jobs:
       - name: Clippy
         run: cargo clippy --locked --all-targets -- -D warnings
 
+      - name: Clippy without the optional Logfire exporter
+        run: cargo clippy --locked --all-targets --no-default-features -- -D warnings
+
   audit:
     name: cargo audit
     runs-on: ubuntu-latest

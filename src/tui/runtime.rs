@@ -20,6 +20,7 @@ use ratatui::backend::CrosstermBackend;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio::time::{Instant, Interval, MissedTickBehavior, interval_at};
+use tracing::Instrument;
 
 use super::actions::run_act;
 use super::feed::RECENT_POSTS;
@@ -154,22 +155,33 @@ pub async fn run(mut app: FeedApp, client: Client, audit: Audit) -> io::Result<(
                 }
                 Effect::FetchProfile { did } => {
                     let (c1, tx1, d1) = (client.clone(), tx.clone(), did.clone());
-                    tasks.spawn(async move {
-                        let result = c1
-                            .get_profile(&d1)
-                            .await
-                            .map(Box::new)
-                            .map_err(|e| e.to_string());
-                        let _ = tx1.send(Msg::Profile { did: d1, result });
-                    });
+                    let span = tracing::info_span!("fetch profile", logfire.msg = "fetch profile");
+                    tasks.spawn(
+                        async move {
+                            let result = c1
+                                .get_profile(&d1)
+                                .await
+                                .map(Box::new)
+                                .map_err(|e| e.to_string());
+                            let _ = tx1.send(Msg::Profile { did: d1, result });
+                        }
+                        .instrument(span),
+                    );
                     let (c, tx) = (client.clone(), tx.clone());
-                    tasks.spawn(async move {
-                        let result = c
-                            .get_recent_posts(&did, RECENT_POSTS)
-                            .await
-                            .map_err(|e| e.to_string());
-                        let _ = tx.send(Msg::Posts { did, result });
-                    });
+                    let span = tracing::info_span!(
+                        "fetch recent posts",
+                        logfire.msg = "fetch recent posts"
+                    );
+                    tasks.spawn(
+                        async move {
+                            let result = c
+                                .get_recent_posts(&did, RECENT_POSTS)
+                                .await
+                                .map_err(|e| e.to_string());
+                            let _ = tx.send(Msg::Posts { did, result });
+                        }
+                        .instrument(span),
+                    );
                 }
                 Effect::Open {
                     urls,
@@ -194,37 +206,93 @@ pub async fn run(mut app: FeedApp, client: Client, audit: Audit) -> io::Result<(
                     // Not aborted on quit while busy: the loop keeps running until the result
                     // arrives, so the action is always saved and audited.
                     let (c, tx) = (client.clone(), tx.clone());
-                    tasks.spawn(async move {
-                        let msg = run_act(&c, *req).await;
-                        let _ = tx.send(Msg::Act(Box::new(msg)));
-                    });
+                    let kind = req.kind();
+                    let span = tracing::info_span!(
+                        "moderation action",
+                        logfire.msg = %format_args!("moderation action: {kind}"),
+                        kind,
+                        outcome = tracing::field::Empty,
+                        lifted = tracing::field::Empty,
+                    );
+                    tasks.spawn(
+                        async move {
+                            let msg = run_act(&c, *req).await;
+                            let span = tracing::Span::current();
+                            span.record("outcome", if msg.err.is_none() { "ok" } else { "error" });
+                            span.record("lifted", msg.lifted);
+                            let _ = tx.send(Msg::Act(Box::new(msg)));
+                        }
+                        .instrument(span),
+                    );
                 }
                 Effect::LoadFollows { req, actor, cursor } => {
                     let (c, tx) = (client.clone(), tx.clone());
-                    tasks.spawn(async move {
-                        let result = c
-                            .get_follows_page(&actor, &cursor)
-                            .await
-                            .map_err(|e| e.to_string());
-                        let _ = tx.send(Msg::FollowsPage { req, result });
-                    });
+                    let span = tracing::info_span!(
+                        "load follows page",
+                        logfire.msg = "load follows page",
+                        first = cursor.is_empty()
+                    );
+                    tasks.spawn(
+                        async move {
+                            let result = c
+                                .get_follows_page(&actor, &cursor)
+                                .await
+                                .map_err(|e| e.to_string());
+                            let _ = tx.send(Msg::FollowsPage { req, result });
+                        }
+                        .instrument(span),
+                    );
                 }
                 Effect::LoadPage { id, cursor } => {
                     let (c, tx) = (client.clone(), tx.clone());
-                    tasks.spawn(async move {
-                        let result = c
-                            .get_timeline(&cursor, PAGE_SIZE)
-                            .await
-                            .map_err(|e| e.to_string());
-                        let _ = tx.send(Msg::Page { id, result });
-                    });
+                    let span = tracing::info_span!(
+                        "load timeline page",
+                        logfire.msg = "load timeline page",
+                        first = cursor.is_empty(),
+                        items = tracing::field::Empty,
+                    );
+                    tasks.spawn(
+                        async move {
+                            let result = c
+                                .get_timeline(&cursor, PAGE_SIZE)
+                                .await
+                                .map_err(|e| e.to_string());
+                            if let Ok((items, _)) = &result {
+                                tracing::Span::current().record("items", items.len());
+                            }
+                            let _ = tx.send(Msg::Page { id, result });
+                        }
+                        .instrument(span),
+                    );
                 }
                 Effect::Check { id, manual, known } => {
                     let (c, tx) = (client.clone(), tx.clone());
-                    tasks.spawn(async move {
-                        let result = run_check(&c, &known).await;
-                        let _ = tx.send(Msg::Check { id, manual, result });
-                    });
+                    let span = tracing::info_span!(
+                        "refresh check",
+                        logfire.msg = "refresh check",
+                        manual,
+                        outcome = tracing::field::Empty,
+                        new_posts = tracing::field::Empty,
+                        gap = tracing::field::Empty,
+                    );
+                    tasks.spawn(
+                        async move {
+                            let result = run_check(&c, &known).await;
+                            let span = tracing::Span::current();
+                            match &result {
+                                Ok(o) => {
+                                    span.record("outcome", "ok");
+                                    span.record("new_posts", o.items.len());
+                                    span.record("gap", o.gap);
+                                }
+                                Err(_) => {
+                                    span.record("outcome", "error");
+                                }
+                            }
+                            let _ = tx.send(Msg::Check { id, manual, result });
+                        }
+                        .instrument(span),
+                    );
                 }
             }
         }

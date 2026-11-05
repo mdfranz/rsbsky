@@ -41,6 +41,22 @@ pub enum ActRequest {
     Unfollow(UndoEntry),
 }
 
+impl ActRequest {
+    /// What kind of action this is, for telemetry: no identities.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            ActRequest::Decide { entry, .. } => match entry.decision.as_str() {
+                store::BLOCKED => "block",
+                store::FOLLOWED => "follow",
+                store::KEPT => "keep",
+                _ => "decide",
+            },
+            ActRequest::Undo(_) => "undo",
+            ActRequest::Unfollow(_) => "unfollow",
+        }
+    }
+}
+
 /// The outcome of a remote action, awaiting its local save.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ActMsg {
@@ -333,6 +349,16 @@ impl FeedApp {
             self.state.set(&did, &e.profile.handle, &e.decision)
         };
         if let Err(err) = saved {
+            tracing::warn!(
+                kind = if msg.is_undo {
+                    "undo"
+                } else if msg.is_unfollow {
+                    "unfollow"
+                } else {
+                    "decision"
+                },
+                "remote action done but the local save failed; kept pending"
+            );
             let text = format!("save decision: {err} (press r to retry saving)");
             self.pending = Some(msg.clone());
             self.quitting = false;
