@@ -13,6 +13,7 @@ use serde::Serialize;
 
 use crate::app::App;
 use crate::bsky::{self, Client, Post};
+use crate::commands;
 use crate::store::{self, State};
 use crate::termtext::{collapse_ws, human_age, sanitize, truncate_width};
 use crate::tui::{self, theme};
@@ -299,7 +300,7 @@ pub async fn run(cli: Cli, out: &mut dyn Write) -> Result<(), CliError> {
 
     // Commands that never log in.
     match &cmd {
-        Cmd::Log(_) => return Err(not_implemented("log", 4)),
+        Cmd::Log(a) => return commands::run_log(a, out),
         Cmd::Themes => {
             let ansi = std::io::stdout().is_terminal();
             return theme::print_themes(out, ansi).map_err(|e| CliError::Failure(e.to_string()));
@@ -372,16 +373,30 @@ pub async fn run(cli: Cli, out: &mut dyn Write) -> Result<(), CliError> {
         }
         Cmd::Posts(_) => Err(not_implemented("posts", 6)),
         Cmd::Review(_) => Err(not_implemented("review", 5)),
-        Cmd::List(_) => Err(not_implemented("list", 4)),
-        Cmd::Baseline => Err(not_implemented("baseline", 4)),
-        Cmd::Show { .. } => Err(not_implemented("show", 4)),
-        Cmd::Block(_) | Cmd::Unblock(_) | Cmd::Follow(_) | Cmd::Unfollow(_) | Cmd::Keep(_) => {
-            Err(not_implemented("moderation commands", 4))
-        }
         Cmd::Post(_) | Cmd::DeletePost(_) | Cmd::Like(_) | Cmd::Unlike(_) => {
             Err(not_implemented("post commands", 6))
         }
-        Cmd::Log(_) | Cmd::Themes => unreachable!("handled before login"),
+        headless => {
+            let stdin = std::io::stdin();
+            let mut lock = stdin.lock();
+            let mut ctx = commands::Ctx {
+                app,
+                stdin: &mut lock,
+                out,
+                stdout_is_tty: std::io::stdout().is_terminal(),
+            };
+            match headless {
+                Cmd::List(a) => ctx.cmd_list(a.since, a.all, a.backlog, a.json).await,
+                Cmd::Baseline => ctx.cmd_baseline().await,
+                Cmd::Show { who } => ctx.cmd_show(who).await,
+                Cmd::Block(a) => ctx.cmd_act("block", &a.ids, a.dry_run).await,
+                Cmd::Unblock(a) => ctx.cmd_act("unblock", &a.ids, a.dry_run).await,
+                Cmd::Follow(a) => ctx.cmd_act("follow", &a.ids, a.dry_run).await,
+                Cmd::Unfollow(a) => ctx.cmd_act("unfollow", &a.ids, a.dry_run).await,
+                Cmd::Keep(a) => ctx.cmd_act("keep", &a.ids, a.dry_run).await,
+                _ => unreachable!("handled above"),
+            }
+        }
     }
 }
 

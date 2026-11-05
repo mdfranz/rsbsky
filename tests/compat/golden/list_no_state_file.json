@@ -1,5 +1,8 @@
 {
  "files": {},
+ "modes": {
+  "home/": "0o755"
+ },
  "status": 0,
  "stderr": "",
  "stdout": "a.test                           via @r1.test, @r2.test                       13mo  first post by A\nd.test                           via @r2.test                                 13mo  decided author\ne.test                           via @r2.test                                 13mo  skipped author\ng.test                           via @r3.test                                 13mo  [reply] reply with a card \u2197 Example Title https://example.com/a\nh.test                           via @r3.test                                 13mo  quote & video <b> \u25b6 video a clip\ni.test                           via @r2.test                                 13mo  h\u00e9llo https://example.com/very/long/path tail \u2713\nj.test                           via @r1.test                                 13mo  bell escred tab\nk.test                           via @r1.test                                 13mo  \u25a3\u00d72 a cat photo\n",

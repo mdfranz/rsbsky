@@ -1,0 +1,60 @@
+{
+ "files": {
+  "audit.jsonl": "{\"ts\": \"<NOW>\", \"action\": \"baseline\", \"source\": \"cli\", \"detail\": \"3 followers marked as old\", \"ok\": true}\n",
+  "state.json": "{\"entries\": {\"did:d\": {\"handle\": \"d.test\", \"decision\": \"kept\", \"at\": \"2024-05-01T10:00:00Z\"}, \"did:e\": {\"handle\": \"e.test\", \"decision\": \"skipped\", \"at\": \"2024-05-01T10:00:00Z\"}, \"did:f1\": {\"handle\": \"f1.test\", \"decision\": \"skipped\", \"at\": \"<NOW>\"}, \"did:f3\": {\"handle\": \"f3.test\", \"decision\": \"skipped\", \"at\": \"<NOW>\"}, \"did:f4\": {\"handle\": \"f4.test\", \"decision\": \"skipped\", \"at\": \"<NOW>\"}}}"
+ },
+ "modes": {
+  "audit.jsonl": "0o600",
+  "home/": "0o755",
+  "state.json": "0o600"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "baselined 3 existing followers; only new ones will show by default (--backlog to revisit)\n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.graph.getFollowers",
+   "query": {
+    "actor": [
+     "did:me"
+    ],
+    "limit": [
+     "100"
+    ]
+   }
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.graph.getFollowers",
+   "query": {
+    "actor": [
+     "did:me"
+    ],
+    "cursor": [
+     "c2"
+    ],
+    "limit": [
+     "100"
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,76 @@
+{
+ "files": {
+  "state.json": "{\"entries\": {\"did:d\": {\"handle\": \"d.test\", \"decision\": \"kept\", \"at\": \"2024-05-01T10:00:00Z\"}, \"did:e\": {\"handle\": \"e.test\", \"decision\": \"skipped\", \"at\": \"2024-05-01T10:00:00Z\"}}}"
+ },
+ "modes": {
+  "home/": "0o755",
+  "state.json": "0o644"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "new    f1.test                          posts=5     followers=6      following=7      age=13mo     did:f1\nnew    f2.test                          posts=0     followers=0      following=0      age=?        did:f2\nnew    f3.test                          posts=0     followers=0      following=0      age=10d      did:f3\nkept   d.test                           posts=1     followers=2      following=3      age=3h       did:d\nnew    f4.test                          posts=0     followers=0      following=0      age=?        did:f4\nskipped e.test                           posts=0     followers=0      following=0      age=5m       did:e\nnew    blk.test                         posts=0     followers=0      following=0      age=?        did:blk\n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.graph.getFollowers",
+   "query": {
+    "actor": [
+     "did:me"
+    ],
+    "limit": [
+     "100"
+    ]
+   }
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.graph.getFollowers",
+   "query": {
+    "actor": [
+     "did:me"
+    ],
+    "cursor": [
+     "c2"
+    ],
+    "limit": [
+     "100"
+    ]
+   }
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.actor.getProfiles",
+   "query": {
+    "actors": [
+     "did:f1",
+     "did:f2",
+     "did:f3",
+     "did:d",
+     "did:f4",
+     "did:e",
+     "did:blk"
+    ]
+   }
+  }
+ ]
+}

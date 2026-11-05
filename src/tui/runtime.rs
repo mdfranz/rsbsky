@@ -21,6 +21,7 @@ use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio::time::{Instant, Interval, MissedTickBehavior, interval_at};
 
+use super::actions::run_act;
 use super::feed::RECENT_POSTS;
 use super::feed::{ANIM_TICK, CHECK_PAGES, CheckOutcome, Effect, FeedApp, Msg, Now, PAGE_SIZE};
 use super::links::{LinkMode, LinkPass};
@@ -188,6 +189,25 @@ pub async fn run(mut app: FeedApp, client: Client, audit: Audit) -> io::Result<(
                         },
                         Now::current(),
                     ));
+                }
+                Effect::Act(req) => {
+                    // Not aborted on quit while busy: the loop keeps running until the result
+                    // arrives, so the action is always saved and audited.
+                    let (c, tx) = (client.clone(), tx.clone());
+                    tasks.spawn(async move {
+                        let msg = run_act(&c, *req).await;
+                        let _ = tx.send(Msg::Act(Box::new(msg)));
+                    });
+                }
+                Effect::LoadFollows { req, actor, cursor } => {
+                    let (c, tx) = (client.clone(), tx.clone());
+                    tasks.spawn(async move {
+                        let result = c
+                            .get_follows_page(&actor, &cursor)
+                            .await
+                            .map_err(|e| e.to_string());
+                        let _ = tx.send(Msg::FollowsPage { req, result });
+                    });
                 }
                 Effect::LoadPage { id, cursor } => {
                     let (c, tx) = (client.clone(), tx.clone());

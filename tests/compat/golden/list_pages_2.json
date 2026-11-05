@@ -2,6 +2,10 @@
  "files": {
   "state.json": "{\"entries\": {\"did:d\": {\"handle\": \"d.test\", \"decision\": \"kept\", \"at\": \"2024-05-01T10:00:00Z\"}, \"did:e\": {\"handle\": \"e.test\", \"decision\": \"skipped\", \"at\": \"2024-05-01T10:00:00.123456789+02:00\"}}}"
  },
+ "modes": {
+  "home/": "0o755",
+  "state.json": "0o644"
+ },
  "status": 0,
  "stderr": "",
  "stdout": "a.test                           via @r1.test, @r2.test                       13mo  first post by A\ng.test                           via @r3.test                                 13mo  [reply] reply with a card \u2197 Example Title https://example.com/a\nh.test                           via @r3.test                                 13mo  quote & video <b> \u25b6 video a clip\ni.test                           via @r2.test                                 13mo  h\u00e9llo https://example.com/very/long/path tail \u2713\nj.test                           via @r1.test                                 13mo  bell escred tab\n",

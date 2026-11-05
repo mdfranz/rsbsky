@@ -216,6 +216,31 @@ pub fn find_mentions(s: &str) -> Vec<String> {
         .collect()
 }
 
+/// A URL or bare domain found in text, with its trailing punctuation left out of `text`.
+pub struct FoundLink {
+    /// Byte range of the whole match (`text` plus trailing punctuation).
+    pub start: usize,
+    pub end: usize,
+    pub text: String,
+    pub target: String,
+}
+
+/// URLs and bare domains in `s`, for adding OSC 8 hyperlinks to plain text.
+pub fn find_links(s: &str) -> Vec<FoundLink> {
+    link_re()
+        .find_iter(s)
+        .map(|m| {
+            let url = m.as_str().trim_end_matches(|c| URL_TRAILING.contains(c));
+            FoundLink {
+                start: m.start(),
+                end: m.end(),
+                text: url.to_string(),
+                target: url_target(url),
+            }
+        })
+        .collect()
+}
+
 /// A hyperlink over `len` display columns starting at `col` of a line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinkSpan {

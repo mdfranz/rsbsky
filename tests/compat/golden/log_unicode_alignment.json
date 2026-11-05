@@ -1,0 +1,13 @@
+{
+ "files": {
+  "audit.jsonl": "{\"ts\": \"2024-01-01T10:00:00Z\", \"action\": \"block\", \"handle\": \"\\u65e5\\u672c\\u8a9e.test\", \"source\": \"cli\", \"ok\": true}\n"
+ },
+ "modes": {
+  "audit.jsonl": "0o644",
+  "home/": "0o755"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "2024-01-01 05:00:00  block    @\u65e5\u672c\u8a9e.test                          cli\n",
+ "trace": []
+}

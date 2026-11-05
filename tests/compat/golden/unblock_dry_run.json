@@ -1,0 +1,37 @@
+{
+ "files": {
+  "audit.jsonl": "{\"ts\": \"<NOW>\", \"action\": \"unblock\", \"did\": \"did:bad\", \"handle\": \"bad.test\", \"source\": \"cli\", \"record\": \"at://did:me/app.bsky.graph.block/rkb\", \"dryRun\": true, \"ok\": true, \"snapshot\": {\"createdAt\": \"2025-10-01T02:05:24.000Z\", \"posts\": 10, \"followers\": 20, \"following\": 30, \"avatar\": true, \"bio\": \"Bio of bad\"}}\n"
+ },
+ "modes": {
+  "audit.jsonl": "0o600",
+  "home/": "0o755"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "[dry-run] would unblock @bad.test (did:bad)\n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.actor.getProfile",
+   "query": {
+    "actor": [
+     "bad"
+    ]
+   }
+  }
+ ]
+}

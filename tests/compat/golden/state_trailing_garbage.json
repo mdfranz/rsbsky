@@ -2,6 +2,10 @@
  "files": {
   "state.json": "{} x"
  },
+ "modes": {
+  "home/": "0o755",
+  "state.json": "0o644"
+ },
  "status": 1,
  "stderr": "error: invalid character 'x' after top-level value\n",
  "stdout": "",

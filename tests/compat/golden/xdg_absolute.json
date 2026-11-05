@@ -2,6 +2,12 @@
  "files": {
   "xdg/bskyban/state.json": "{\"entries\": {\"did:a\": {\"handle\": \"a.test\", \"decision\": \"kept\", \"at\": \"2024-05-01T10:00:00Z\"}}}"
  },
+ "modes": {
+  "home/": "0o755",
+  "xdg/": "0o755",
+  "xdg/bskyban/": "0o755",
+  "xdg/bskyban/state.json": "0o644"
+ },
  "status": 0,
  "stderr": "",
  "stdout": "l.test                           via @r1.test                                 13mo  from l\n",

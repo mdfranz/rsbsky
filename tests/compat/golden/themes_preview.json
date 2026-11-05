@@ -1,5 +1,8 @@
 {
  "files": {},
+ "modes": {
+  "home/": "0o755"
+ },
  "status": 0,
  "stderr": "",
  "stdout": "auto\n  4m Sample post @you.bsky.social\n\u25b8 4m Sample post @you.bsky.social\n  status  error  kept  fresh \u2503\u2503\u2503\u2503\u2503\u2503\u2503\u2503\u2503\n\ndark\n  4m Sample post @you.bsky.social\n\u25b8 4m Sample post @you.bsky.social\n  status  error  kept  fresh \u2503\u2503\u2503\u2503\u2503\u2503\u2503\u2503\u2503\n\nlight\n  4m Sample post @you.bsky.social\n\u25b8 4m Sample post @you.bsky.social\n  status  error  kept  fresh \u2503\u2503\u2503\u2503\u2503\u2503\u2503\u2503\u2503\n\nansi\n  4m Sample post @you.bsky.social\n\u25b8 4m Sample post @you.bsky.social\n  status  error  kept  fresh \u2503\u2503\u2503\n\ndracula\n  4m Sample post @you.bsky.social\n\u25b8 4m Sample post @you.bsky.social\n  status  error  kept  fresh \u2503\u2503\u2503\u2503\n\ncatppuccin\n  4m Sample post @you.bsky.social\n\u25b8 4m Sample post @you.bsky.social\n  status  error  kept  fresh \u2503\u2503\u2503\u2503\n\n",

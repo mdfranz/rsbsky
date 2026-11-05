@@ -6,7 +6,7 @@ pub mod state;
 
 use std::path::{Path, PathBuf};
 
-pub use audit::{Audit, AuditEvent, Snapshot};
+pub use audit::{Audit, AuditEvent, Snapshot, read_audit};
 pub use state::{Entry, State};
 
 pub const BLOCKED: &str = "blocked";

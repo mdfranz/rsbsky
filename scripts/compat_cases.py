@@ -8,6 +8,8 @@ stdout as parsed JSON lines), cmp (exact | status | stderr_first_line), defer (p
 Deliberate differences from Go (see docs/compat.md) are expressed with cmp="status".
 """
 
+import json
+
 NO_CREDS = {"BSKY_HANDLE": None, "BSKY_APP_PASSWORD": None}
 CASES = []
 
@@ -151,13 +153,13 @@ for n, args in [("refresh_zero_ok", ["feed", "--refresh", "0"]), ("refresh_10s_o
     case(n, args, env=dict(NO_CREDS, BSKYBAN_THEME="Catppuccin") if n == "theme_valid_env" else NO_CREDS)
 
 # deferred command bodies (credential-free or not yet ported)
-case("log_empty", ["log"], env=NO_CREDS, defer="phase 4")
+case("log_empty", ["log"], env=NO_CREDS)
 case("themes_preview", ["themes"], env=NO_CREDS)
 case("themes_preview_no_color", ["themes"], env=dict(NO_CREDS, NO_COLOR="1"))
 case("themes_preview_tty", ["themes"], env=NO_CREDS, tty=100, defer="colour escapes differ (lipgloss vs raw SGR); checked by unit tests")
 case("themes_with_args", ["themes", "x"], env=NO_CREDS, cmp="status")
 case("feed_without_terminal", ["feed"], routes=TIMELINE, cmp="stderr_first_line")  # both fail after login; wording differs
-case("block_command", ["block", "someone"], defer="phase 4")
+case("block_command", ["block", "someone"])
 
 # ---------------------------------------------------------------- Phase 1: login and API errors
 case("login_ok_unknown_command", ["bogus"], cmp="status")
@@ -238,3 +240,150 @@ case("home_unset_audit_default", LIST, routes=TWO, env={"HOME": None, "BSKYBAN_A
 case("home_empty", LIST, routes=TWO, env=dict(PATHS_ENV, HOME=""))
 case("home_unset_but_both_overridden", LIST, routes=TWO, env={"HOME": None}, files={"state.json": XDG_STATE})
 case("pds_trailing_slash", LIST, routes=TWO, env={"BSKY_PDS": "{PDS}/"})
+
+
+# ================================================================ Phase 4: decisions, audit, log
+def pr(actor, did=None, handle=None, viewer=None, **kw):
+    """A getProfile response for `actor` (a handle or DID)."""
+    base = actor.replace("did:", "")
+    body = {"did": did or ("did:" + base), "handle": handle or (base + ".test"), "displayName": kw.pop("name", base.title()),
+            "createdAt": "{AGO:400d}", "postsCount": 10, "followersCount": 20, "followsCount": 30,
+            "avatar": "https://cdn/a.jpg", "description": "  Bio   of %s  " % base, "viewer": viewer or {}}
+    body.update(kw)
+    return {"path": "/xrpc/app.bsky.actor.getProfile", "q": {"actor": actor}, "body": body}
+
+
+def create(collection, uri=None, status=200, body=None):
+    return {"method": "POST", "path": "/xrpc/com.atproto.repo.createRecord", "jbody": {"collection": collection},
+            "status": status, "body": body if body is not None else {"uri": uri or "at://did:me/%s/new1" % collection, "cid": "c"}}
+
+
+def delete(collection, status=200, body=None):
+    return {"method": "POST", "path": "/xrpc/com.atproto.repo.deleteRecord", "jbody": {"collection": collection},
+            "status": status, "body": body if body is not None else {}}
+
+
+BLOCK, FOLLOW = "app.bsky.graph.block", "app.bsky.graph.follow"
+HAVE = {"entries": {"did:old": {"handle": "old.test", "decision": "kept", "at": "2024-05-01T10:00:00Z"}}}
+BLOCKED_VIEW = {"blocking": "at://did:me/app.bsky.graph.block/rkb"}
+FOLLOWING_VIEW = {"following": "at://did:me/app.bsky.graph.follow/rkf"}
+P_NEW = pr("newbie")
+P_BLOCKED = pr("bad", viewer=BLOCKED_VIEW)
+P_FRIEND = pr("friend", viewer=FOLLOWING_VIEW)
+ALL_WRITES = [create(BLOCK), create(FOLLOW), delete(BLOCK), delete(FOLLOW)]
+
+# ---- block
+case("block_new", ["block", "newbie"], routes=[P_NEW, create(BLOCK)])
+case("block_new_by_did_with_at_sign", ["block", "@did:newbie"], routes=[pr("did:newbie"), create(BLOCK)])
+case("block_dry_run", ["block", "--dry-run", "newbie"], routes=[P_NEW, create(BLOCK)])
+case("block_already_blocked", ["block", "bad"], routes=[P_BLOCKED])
+case("block_already_blocked_dry_run", ["block", "--dry-run", "bad"], routes=[P_BLOCKED])
+case("block_keeps_existing_state_entries", ["block", "newbie"], routes=[P_NEW, create(BLOCK)], files={"state.json": HAVE})
+case("block_unknown_actor", ["block", "ghost"], routes=[{"path": "/xrpc/app.bsky.actor.getProfile", "status": 400, "body": {"error": "InvalidRequest", "message": "Profile not found"}}])
+case("block_create_fails", ["block", "newbie"], routes=[P_NEW, create(BLOCK, status=500, body={"error": "InternalServerError", "message": "oops"})])
+case("block_partial_failure", ["block", "newbie", "ghost", "friend"], routes=[P_NEW, P_FRIEND, create(BLOCK)])
+case("block_several", ["block", "newbie", "friend"], routes=[P_NEW, P_FRIEND, create(BLOCK)])
+case("block_ids_from_stdin", ["block", "-"], routes=[P_NEW, P_FRIEND, create(BLOCK)], stdin="newbie  extra words\n\n  @friend\n")
+case("block_stdin_empty_is_usage", ["block", "-"], routes=[], stdin="\n   \n", cmp="status")
+case("block_state_save_fails", ["block", "newbie"], routes=[P_NEW, create(BLOCK)], files={"state.json.tmp/x": "y"}, cmp="no_stderr")
+case("block_audit_unwritable", ["block", "newbie"], routes=[P_NEW, create(BLOCK)], env={"BSKYBAN_AUDIT": "{TMP}/state.json.tmp/audit.jsonl"}, files={"state.json.tmp": "a file, not a dir"}, cmp="no_stderr")
+case("block_sanitizes_ids_in_errors", ["block", "evil\x1b[31m"], routes=[])
+
+# ---- keep
+case("keep_new", ["keep", "newbie"], routes=[P_NEW])
+case("keep_dry_run", ["keep", "--dry-run", "newbie"], routes=[P_NEW])
+case("keep_over_existing_block_leaves_remote_alone", ["keep", "bad"], routes=[P_BLOCKED], files={"state.json": {"entries": {"did:bad": {"handle": "bad.test", "decision": "blocked", "at": "2024-05-01T10:00:00Z"}}}})
+
+# ---- follow
+case("follow_new", ["follow", "newbie"], routes=[P_NEW, create(FOLLOW)])
+case("follow_dry_run", ["follow", "--dry-run", "newbie"], routes=[P_NEW, create(FOLLOW)])
+case("follow_already_following", ["follow", "friend"], routes=[P_FRIEND])
+case("follow_already_following_dry_run", ["follow", "--dry-run", "friend"], routes=[P_FRIEND])
+case("follow_create_fails", ["follow", "newbie"], routes=[P_NEW, create(FOLLOW, status=400, body={"error": "InvalidRequest", "message": "bad subject"})])
+
+# ---- unfollow
+case("unfollow_decided_follow_clears_state", ["unfollow", "friend"], routes=[P_FRIEND, delete(FOLLOW)],
+     files={"state.json": {"entries": {"did:friend": {"handle": "friend.test", "decision": "followed", "at": "2024-05-01T10:00:00Z"}}}})
+case("unfollow_keeps_other_decisions", ["unfollow", "friend"], routes=[P_FRIEND, delete(FOLLOW)],
+     files={"state.json": {"entries": {"did:friend": {"handle": "friend.test", "decision": "kept", "at": "2024-05-01T10:00:00Z"}}}})
+case("unfollow_not_following", ["unfollow", "newbie"], routes=[P_NEW, delete(FOLLOW)])
+case("unfollow_dry_run", ["unfollow", "--dry-run", "friend"], routes=[P_FRIEND, delete(FOLLOW)])
+case("unfollow_delete_fails", ["unfollow", "friend"], routes=[P_FRIEND, delete(FOLLOW, status=500, body={"error": "InternalServerError", "message": "no"})])
+
+# ---- unblock
+case("unblock_blocked", ["unblock", "bad"], routes=[P_BLOCKED, delete(BLOCK)],
+     files={"state.json": {"entries": {"did:bad": {"handle": "bad.test", "decision": "blocked", "at": "2024-05-01T10:00:00Z"}}}})
+case("unblock_state_only", ["unblock", "newbie"], routes=[P_NEW, delete(BLOCK)], files={"state.json": {"entries": {"did:newbie": {"handle": "newbie.test", "decision": "kept", "at": "2024-05-01T10:00:00Z"}}}})
+case("unblock_nothing_recorded_still_writes_state", ["unblock", "newbie"], routes=[P_NEW, delete(BLOCK)])
+case("unblock_dry_run", ["unblock", "--dry-run", "bad"], routes=[P_BLOCKED, delete(BLOCK)])
+case("unblock_delete_fails", ["unblock", "bad"], routes=[P_BLOCKED, delete(BLOCK, status=500, body={"error": "InternalServerError", "message": "no"})])
+
+# ---- baseline, list
+FOLLOWERS_P1 = {"path": "/xrpc/app.bsky.graph.getFollowers", "q": {"actor": "did:me", "limit": "100", "cursor": None},
+                "body": {"followers": [prof("did:f1", "f1.test", "F One"), prof("did:f2", "f2.test", "F Two", following="at://x/follow/1"),
+                                       prof("did:f3", "f3.test", "F Three"), prof("did:d", "d.test", "Decided")], "cursor": "c2"}}
+FOLLOWERS_P2 = {"path": "/xrpc/app.bsky.graph.getFollowers", "q": {"actor": "did:me", "limit": "100", "cursor": "c2"},
+                "body": {"followers": [prof("did:f4", "f4.test", "F Four"), prof("did:e", "e.test", "Skipped"), prof("did:blk", "blk.test", "B", blocking="at://x/block/1")]}}
+FSTATE = {"entries": {"did:d": {"handle": "d.test", "decision": "kept", "at": "2024-05-01T10:00:00Z"},
+                      "did:e": {"handle": "e.test", "decision": "skipped", "at": "2024-05-01T10:00:00Z"}}}
+PROFILES = {"path": "/xrpc/app.bsky.actor.getProfiles", "body": {"profiles": [
+    {"did": "did:f1", "handle": "f1.test", "displayName": "F One", "createdAt": "{AGO:400d}", "postsCount": 5, "followersCount": 6, "followsCount": 7, "avatar": "x", "description": "bio one"},
+    {"did": "did:f3", "handle": "f3.test", "displayName": "F Three", "createdAt": "{AGO:10d}", "postsCount": 0, "followersCount": 0, "followsCount": 0},
+    {"did": "did:d", "handle": "d.test", "displayName": "Decided", "createdAt": "{AGO:3h}", "postsCount": 1, "followersCount": 2, "followsCount": 3},
+    {"did": "did:e", "handle": "e.test", "createdAt": "{AGO:5m}", "description": "line1\nline2 \x1b[31mred"}]}}
+case("baseline_marks_new_followers", ["baseline"], routes=[FOLLOWERS_P1, FOLLOWERS_P2], files={"state.json": FSTATE})
+case("baseline_without_state_file", ["baseline"], routes=[FOLLOWERS_P1, FOLLOWERS_P2])
+case("baseline_followers_error", ["baseline"], routes=[{"path": "/xrpc/app.bsky.graph.getFollowers", "status": 500, "body": "x"}])
+case("baseline_state_save_fails", ["baseline"], routes=[FOLLOWERS_P1, FOLLOWERS_P2], files={"state.json.tmp/x": "y"}, cmp="no_stderr")
+for n, a in [("default", []), ("all", ["--all"]), ("backlog", ["--backlog"]), ("since_2", ["--since", "2"]), ("json", ["--json"]), ("all_json", ["--all", "--json"])]:
+    case("cmd_list_" + n, ["list"] + a, routes=[FOLLOWERS_P1, FOLLOWERS_P2, PROFILES], files={"state.json": FSTATE}, jsonl=bool("json" in n))
+case("cmd_list_profiles_error", ["list"], routes=[FOLLOWERS_P1, FOLLOWERS_P2, {"path": "/xrpc/app.bsky.actor.getProfiles", "status": 502, "body": {"error": "Upstream", "message": "down"}}])
+case("cmd_list_nobody_new", ["list"], routes=[{"path": "/xrpc/app.bsky.graph.getFollowers", "body": {"followers": []}}])
+
+# ---- show
+RECENT = {"path": "/xrpc/app.bsky.feed.getAuthorFeed", "q": {"filter": "posts_with_replies", "limit": "5"}, "body": {"feed": [
+    entry("s1", prof("did:newbie", "newbie.test"), "first recent post", created="{AGO:2h}"),
+    entry("s2", prof("did:newbie", "newbie.test"), "reply ", reply={"parent": {}}, created="{AGO:1d}"),
+    entry("s3", prof("did:x", "x.test"), "reposted thing", by=prof("did:newbie", "newbie.test"), created="{AGO:9d}", embed=LINK_EMBED)]}}
+case("show_basic", ["show", "newbie"], routes=[P_NEW, RECENT])
+case("show_no_posts", ["show", "newbie"], routes=[P_NEW, {"path": "/xrpc/app.bsky.feed.getAuthorFeed", "body": {"feed": []}}])
+case("show_recent_posts_error_still_succeeds", ["show", "newbie"], routes=[P_NEW, {"path": "/xrpc/app.bsky.feed.getAuthorFeed", "status": 400, "body": {"error": "BlockedActor", "message": "blocked"}}])
+case("show_blocked_status_wins", ["show", "bad"], routes=[P_BLOCKED, RECENT], files={"state.json": {"entries": {"did:bad": {"handle": "bad.test", "decision": "kept", "at": "2024-05-01T10:00:00Z"}}}})
+case("show_kept_status", ["show", "newbie"], routes=[P_NEW, RECENT], files={"state.json": {"entries": {"did:newbie": {"handle": "newbie.test", "decision": "kept", "at": "2024-05-01T10:00:00Z"}}}})
+case("show_bio_with_url_piped_stays_plain", ["show", "linky"], routes=[pr("linky", description="see https://example.com/x. and example.org\x1b[1m!"), RECENT])
+case("show_missing_profile_fields", ["show", "bare"], routes=[{"path": "/xrpc/app.bsky.actor.getProfile", "body": {"did": "did:bare", "handle": "bare.test"}}, RECENT])
+case("show_unknown_actor", ["show", "ghost"], routes=[])
+
+# ---- log (reads the audit file; no login needed)
+NOW_AGO = lambda **kw: "{AGO:%s}" % kw["a"]
+AUDIT = "\n".join(json.dumps(e) for e in [
+    {"ts": "2024-01-01T10:00:00Z", "action": "block", "did": "did:a", "handle": "alice.test", "source": "cli", "ok": True, "record": "at://r1"},
+    {"ts": "2024-01-02T11:30:05Z", "action": "follow", "did": "did:b", "handle": "bob.test", "source": "tui:following", "via": "carol.test", "ok": True},
+    {"ts": "2024-01-03T12:00:00Z", "action": "unblock", "did": "did:a", "handle": "alice.test", "source": "tui:reposts", "ok": False, "error": "boom\x1b[31m", "detail": "lifted by kept"},
+    {"ts": "2024-01-04T00:00:00Z", "action": "keep", "did": "did:c", "handle": "carol.test", "source": "cli", "dryRun": True, "ok": True},
+    {"ts": "not a time", "action": "post", "did": "did:me", "handle": "me.test", "source": "cli", "ok": True, "detail": "weird <&>"},
+    {"ts": "2099-01-01T00:00:00Z", "action": "baseline", "source": "cli", "ok": True, "detail": "3 followers marked as old"},
+]) + "\n"
+NOCRED = dict(NO_CREDS)
+case("log_default", ["log"], env=NOCRED, files={"audit.jsonl": AUDIT})
+case("log_json", ["log", "--json"], env=NOCRED, files={"audit.jsonl": AUDIT}, jsonl=True)
+case("log_json_bytes", ["log", "--json"], env=NOCRED, files={"audit.jsonl": AUDIT})
+case("log_action_filter", ["log", "--action", "block"], env=NOCRED, files={"audit.jsonl": AUDIT})
+case("log_who_handle_substring", ["log", "--who", "@lice"], env=NOCRED, files={"audit.jsonl": AUDIT})
+case("log_who_did_exact", ["log", "--who", "did:c"], env=NOCRED, files={"audit.jsonl": AUDIT})
+case("log_who_did_partial_does_not_match", ["log", "--who", "did:"], env=NOCRED, files={"audit.jsonl": AUDIT})
+case("log_last_n", ["log", "-n", "2"], env=NOCRED, files={"audit.jsonl": AUDIT})
+case("log_n_zero_means_all", ["log", "-n", "0"], env=NOCRED, files={"audit.jsonl": AUDIT})
+case("log_since_days", ["log", "--since", "7d"], env=NOCRED, files={"audit.jsonl": AUDIT})
+case("log_since_hours", ["log", "--since", "48h"], env=NOCRED, files={"audit.jsonl": AUDIT})
+case("log_since_bad", ["log", "--since", "soon"], env=NOCRED, files={"audit.jsonl": AUDIT}, cmp="status")
+case("log_missing_file_is_empty", ["log"], env=NOCRED)
+case("log_blank_lines_and_null", ["log"], env=NOCRED, files={"audit.jsonl": '\n\nnull\n{"action":"x","source":"cli","ok":true,"handle":"h"}\n  \n'})
+case("log_malformed_line", ["log"], env=NOCRED, files={"audit.jsonl": '{"action":"a"}\n{oops\n'}, cmp="stderr_first_line")
+case("log_array_line_is_an_error", ["log"], env=NOCRED, files={"audit.jsonl": '{"action":"a"}\n[]\n'}, cmp="stderr_first_line")
+case("log_default_path_from_xdg", ["log"], env=dict(NOCRED, BSKYBAN_AUDIT=None, XDG_STATE_HOME="{TMP}/xdg"), files={"xdg/bskyban/audit.jsonl": AUDIT})
+case("log_no_home_no_override", ["log"], env=dict(NOCRED, BSKYBAN_AUDIT=None, HOME=None))
+case("log_unicode_alignment", ["log"], env=NOCRED, files={"audit.jsonl": json.dumps({"ts": "2024-01-01T10:00:00Z", "action": "block", "handle": "日本語.test", "source": "cli", "ok": True}) + "\n"})
+
+# ---- the decisions leave a trail `log` can read back (Rust-written files must satisfy Go's reader)
+case("block_then_log_reads_back", ["block", "newbie"], routes=[P_NEW, create(BLOCK)], jsonl=False)

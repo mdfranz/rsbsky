@@ -96,6 +96,29 @@ impl Client {
         serde_json::from_slice(&data).map_err(|e| Error::Decode(e.to_string()))
     }
 
+    /// POSTs `body` as JSON to `nsid`; returns the raw 200 response.
+    pub(crate) async fn post_raw(
+        &self,
+        nsid: &str,
+        body: &serde_json::Value,
+    ) -> Result<Vec<u8>, Error> {
+        let req = self
+            .http
+            .post(self.url(nsid, &[]))
+            .header("Content-Type", "application/json")
+            .body(body.to_string());
+        self.send(nsid, req).await
+    }
+
+    pub(crate) async fn post<T: DeserializeOwned>(
+        &self,
+        nsid: &str,
+        body: &serde_json::Value,
+    ) -> Result<T, Error> {
+        let data = self.post_raw(nsid, body).await?;
+        serde_json::from_slice(&data).map_err(|e| Error::Decode(e.to_string()))
+    }
+
     pub async fn login(&mut self, identifier: &str, password: &str) -> Result<(), Error> {
         #[derive(serde::Deserialize, Default)]
         #[serde(default)]

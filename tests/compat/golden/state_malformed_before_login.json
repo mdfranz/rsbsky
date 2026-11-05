@@ -2,6 +2,10 @@
  "files": {
   "state.json": "{"
  },
+ "modes": {
+  "home/": "0o755",
+  "state.json": "0o644"
+ },
  "status": 1,
  "stderr": "error: unexpected end of JSON input\n",
  "stdout": "",

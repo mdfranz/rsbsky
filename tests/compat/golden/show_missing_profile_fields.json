@@ -1,0 +1,52 @@
+{
+ "files": {},
+ "modes": {
+  "home/": "0o755"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": " (@bare.test)\nDID:       did:bare\nStatus:    new\nCreated:    (?)\nPosts:     0\nFollowers: 0\nFollowing: 0\nAvatar:    false\nURL:       https://bsky.app/profile/bare.test\n\n\n\nRecent posts:\n  2h    first recent post\n  24h   [reply] reply\n  9d    [repost] reposted thing \u2197 Example Title https://example.com/a\n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.actor.getProfile",
+   "query": {
+    "actor": [
+     "bare"
+    ]
+   }
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.feed.getAuthorFeed",
+   "query": {
+    "actor": [
+     "did:bare"
+    ],
+    "filter": [
+     "posts_with_replies"
+    ],
+    "limit": [
+     "5"
+    ]
+   }
+  }
+ ]
+}

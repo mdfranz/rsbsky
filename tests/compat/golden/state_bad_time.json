@@ -1,6 +1,10 @@
 {
  "files": {
-  "state.json": "{\"entries\":{\"did:a\":{\"decision\":\"kept\",\"at\":\"yesterday\"}}}"
+  "state.json": "{\"entries\": {\"did:a\": {\"decision\": \"kept\", \"at\": \"yesterday\"}}}"
+ },
+ "modes": {
+  "home/": "0o755",
+  "state.json": "0o644"
  },
  "status": 1,
  "stderr": "error: parsing time \"yesterday\" as \"2006-01-02T15:04:05Z07:00\": cannot parse \"yesterday\" as \"2006\"\n",

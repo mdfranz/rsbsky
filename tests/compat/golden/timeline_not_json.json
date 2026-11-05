@@ -1,5 +1,8 @@
 {
  "files": {},
+ "modes": {
+  "home/": "0o755"
+ },
  "status": 1,
  "stderr": "error: invalid character 'g' looking for beginning of value\n",
  "stdout": "",

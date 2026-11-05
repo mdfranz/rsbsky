@@ -2,6 +2,11 @@
  "files": {
   "state.json/x": "y"
  },
+ "modes": {
+  "home/": "0o755",
+  "state.json/": "0o755",
+  "state.json/x": "0o644"
+ },
  "status": 1,
  "stderr": "error: read {TMP}/state.json: is a directory\n",
  "stdout": "",

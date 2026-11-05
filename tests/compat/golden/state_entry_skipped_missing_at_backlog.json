@@ -1,6 +1,10 @@
 {
  "files": {
-  "state.json": "{\"entries\":{\"did:a\":{\"decision\":\"skipped\"}}}"
+  "state.json": "{\"entries\": {\"did:a\": {\"decision\": \"skipped\"}}}"
+ },
+ "modes": {
+  "home/": "0o755",
+  "state.json": "0o644"
  },
  "status": 0,
  "stderr": "",

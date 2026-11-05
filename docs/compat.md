@@ -41,6 +41,7 @@ python3 scripts/compat.py diff    --go-bin ./bskyban --bin target/debug/rsbsky  
 | 1 Client, state reading, `feed --list [--json]` | done; matrix + wiremock tests pass, no mutations or state writes |
 | 2 Feed TUI (Following), `themes`, refresh, audit writer | done; see "Phase 2 notes" |
 | 3 Post detail view, link picker, image/link openers | done; see "Phase 3 notes" |
+| 4 State writing, audit reading, moderation actions | done; see "Phase 4 notes" |
 
 ## Phase 2 notes
 Implemented: `rsbsky` / `rsbsky feed` Following view (list with up to 3 text lines, quote, repost/reply tags,
@@ -80,9 +81,35 @@ colon-separated commands, `%s` = URL) or `open` / `xdg-open`, with the launcher'
   panel; a link clipped by the panel edge stays a link over the visible cells; the hint bar lists only implemented
   keys; account age is computed from an injected clock (testable) rather than the wall clock at render time.
 
+## Phase 4 notes
+**Headless:** `log` (credential-free), `list`, `baseline`, `show`, and `block | unblock | follow | unfollow | keep`
+with `--dry-run` and `-` (identifiers from stdin) are byte-for-byte compatible with Go on stdout, exit status, the
+request sequence *including bodies*, and the resulting `state.json` / `audit.jsonl` (parsed equality; timestamps
+written "just now" are normalised) and file modes (0700 directories, 0600 files). `state.json` is written atomically
+(tmp + rename) and rolled back in memory when the save fails; unknown fields and `null` entries survive a rewrite.
+
+**Feed keys:** `b` block (asks again when you follow them), `f` follow, `k` keep, `u` unfollow (asks again), `U` undo,
+`F` browse who the author follows (`Enter`/`o` opens a profile, `q`/`Esc` closes, `R` retries). Decisions are audited as
+`source: tui:following` with `via` (who reposted the author) and a profile snapshot (counts only if the full profile
+had loaded); overriding a block/follow audits the lifting `unblock`/`unfollow` first.
+
+**Remote result and local save are separate.** If the API call succeeds but the state file cannot be written, the
+result is kept as *pending*: the footer says so, the failure is audited (`action completed; local persistence failed`),
+every other key and `q` are refused, and `r` retries *only* the save (no second mutation) until it succeeds. Quitting
+while an action is running waits for it, saves and audits, then exits; a failed action cancels the quit and shows the
+error. Undo restores the previous decision *and* its remote relationship; restoring a lifted block/follow creates a
+new record, and the earlier history entry is updated so a later undo deletes the replacement.
+
+**Verification:** `scripts/compat.py` (172+ cases against Go), unit tests for every key path including failure
+injection, wiremock tests of the remote half (`tests/actions.rs`), tmux checks (decisions, confirmation, failure,
+read-only state directory with `r` recovery, quit during a slow action), and `scripts/roundtrip.py --go-bin G --bin R`
+(sequential Go->Rust->Go writes over shared files; needs the Go binary, so it is not part of `cargo test`).
+
+**Differences from Go:** usage errors (`block` with no identifiers, bad flags) are reported before logging in;
+OS error wording in save failures differs ("Is a directory (os error 21)"); `log --since` takes `humantime`
+durations plus the `Nd` day form (no fractional hours).
+
 ## Temporary stubs (exit 1, `error: <cmd>: not yet implemented in rsbsky (planned: phase N)`)
 Credentials, state loading and login run first, as in Go, so these fail after a successful login.
-`review` (5), `posts` incl. `--list/--json` (6), `log` (4, credential-free), `list`, `baseline`, `show`,
-`block|unblock|follow|unfollow|keep` (4), `post|delete-post|like|unlike` (6). Moderation keys
-(`b f k u U F`, 4), reply/like/compose/delete (6) and the Reposts tab (5) are not bound yet. Deferred matrix cases: `log_empty`,
-`block_command`, `themes_preview_tty`.
+`review` (5), `posts` incl. `--list/--json` (6), `post|delete-post|like|unlike` (6). The Reposts tab (5) and
+reply / like / compose / delete keys (6) are not bound yet. Deferred matrix case: `themes_preview_tty`.

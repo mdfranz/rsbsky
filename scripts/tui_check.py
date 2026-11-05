@@ -11,7 +11,7 @@ import argparse, json, os, pty, re, select, shutil, struct, subprocess, sys, tem
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from compat import FakePDS  # noqa: E402
-from compat_cases import entry, tl, prof, A, B, G, R1, R2, R3, IMG_EMBED, IMG_VIEW  # noqa: E402
+from compat_cases import entry, tl, prof, create, delete, A, B, G, R1, R2, R3, IMG_EMBED, IMG_VIEW, BLOCK, FOLLOW  # noqa: E402
 
 FAILS = []
 SOCK = "rsbsky-tui-check-%d" % os.getpid()
@@ -341,6 +341,138 @@ def main():
     e.close()
     os.remove(browser)
     os.remove(log)
+
+    # ---- 9c. moderation keys: decisions, confirmation, undo, failures, save recovery, quit rules
+    def act_timeline():
+        u0 = prof("did:u0", "user0.test", "User Zero")
+        u1 = prof("did:u1", "user1.test", "User One", following="at://did:me/app.bsky.graph.follow/f1")
+        u2 = prof("did:u2", "user2.test", "User Two")
+        return [tl([entry("p0", u0, "stranger post"), entry("p1", u1, "friend post"), entry("p2", u2, "other post")], limit="50")]
+
+    def reads(e):
+        st = json.load(open(e.tmp + "/state.json")) if os.path.exists(e.tmp + "/state.json") else None
+        au = [json.loads(l) for l in open(e.tmp + "/audit.jsonl").read().splitlines()] if os.path.exists(e.tmp + "/audit.jsonl") else []
+        return st, au
+
+    def writes(e):
+        return [r for r in e.pds.trace if r["method"] == "POST" and not r["path"].endswith("createSession")]
+
+    e = Env(act_timeline() + [create(BLOCK, "at://did:me/app.bsky.graph.block/blk1"), delete(BLOCK), delete(FOLLOW)])
+    start(e, binp, w=110, h=30)
+    wait_for(lambda: "User Zero" in screen())
+    tmux("send-keys", "-t", "t", "k")
+    check("k keeps without any remote call", wait_for(lambda: "kept @user0.test" in screen()) and not writes(e), screen())
+    check("...and tags the author", "kept" in [l for l in screen().splitlines() if "User Zero" in l][0], screen())
+    st, au = reads(e)
+    check("state.json has the decision", st and st["entries"]["did:u0"]["decision"] == "kept" and st["entries"]["did:u0"]["handle"] == "user0.test", st)
+    check("audit has a keep event from tui:following", au and au[0]["action"] == "keep" and au[0]["source"] == "tui:following" and au[0]["ok"] is True and au[0]["did"] == "did:u0", au)
+    tmux("send-keys", "-t", "t", "b")
+    check("b over a kept account lifts nothing and blocks", wait_for(lambda: "blocked @user0.test" in screen()), screen())
+    w = writes(e)
+    check("one createRecord for the block, with the right body", len(w) == 1 and w[0]["body"]["collection"] == BLOCK and w[0]["body"]["record"]["subject"] == "did:u0" and w[0]["body"]["repo"] == "did:me", w)
+    tmux("send-keys", "-t", "t", "U")
+    check("U undoes: deletes the block record and restores the kept decision", wait_for(lambda: "undid blocked for @user0.test" in screen()), screen())
+    w = writes(e)
+    check("deleteRecord used the record created earlier", len(w) == 2 and w[1]["body"]["rkey"] == "blk1" and w[1]["body"]["collection"] == BLOCK, w)
+    st, au = reads(e)
+    check("state is back to the previous decision (kept)", st["entries"]["did:u0"]["decision"] == "kept", st)
+    check("audit trail: keep, block, undo", [a["action"] for a in au] == ["keep", "block", "undo"] and au[2]["detail"] == "undid blocked", au)
+    tmux("send-keys", "-t", "t", "Down", "b")
+    check("blocking someone you follow asks first", wait_for(lambda: "You follow @user1.test. Press b again to block them." in screen()), screen())
+    n_before = len(writes(e))
+    tmux("send-keys", "-t", "t", "Down", "Up", "b")
+    time.sleep(0.4)
+    check("any other key cancels the confirmation", len(writes(e)) == n_before and "blocked @user1" not in screen(), screen())
+    tmux("send-keys", "-t", "t", "u")
+    check("u asks for confirmation too", wait_for(lambda: "Unfollow @user1.test? Press u again to confirm." in screen()), screen())
+    tmux("send-keys", "-t", "t", "u")
+    check("second u unfollows", wait_for(lambda: "unfollowed @user1.test" in screen()), screen())
+    w = writes(e)
+    check("deleteRecord removed the follow record", w[-1]["body"]["rkey"] == "f1" and w[-1]["body"]["collection"] == FOLLOW, w[-1])
+    tmux("send-keys", "-t", "t", "q")
+    check("quits cleanly", wait_for(lambda: "EXIT=0" in screen()))
+    e.close()
+
+    # remote failure: nothing saved, error shown, failure audited
+    e = Env(act_timeline() + [create(BLOCK, status=500, body={"error": "InternalServerError", "message": "oops"})])
+    start(e, binp, w=110, h=30)
+    wait_for(lambda: "User Zero" in screen())
+    tmux("send-keys", "-t", "t", "b")
+    check("a failed block is shown as an error", wait_for(lambda: "error: com.atproto.repo.createRecord: oops (InternalServerError)" in screen()), screen())
+    st, au = reads(e)
+    check("...nothing was saved", st is None, st)
+    check("...and the failure is audited", len(au) == 1 and au[0]["ok"] is False and au[0]["action"] == "block" and "oops" in au[0]["error"], au)
+    tmux("send-keys", "-t", "t", "q")
+    check("a failed action does not block quitting", wait_for(lambda: "EXIT=0" in screen()))
+    e.close()
+
+    # remote success, local save failure: pending state, blocked keys, retry without a second mutation
+    e = Env(act_timeline() + [create(BLOCK, "at://did:me/app.bsky.graph.block/blk2")])
+    os.makedirs(e.tmp + "/ro")
+    e.env["BSKYBAN_STATE"] = e.tmp + "/ro/state.json"
+    os.chmod(e.tmp + "/ro", 0o500)
+    start(e, binp, w=110, h=30)
+    wait_for(lambda: "User Zero" in screen())
+    tmux("send-keys", "-t", "t", "b")
+    check("save failure keeps the completed action pending", wait_for(lambda: "action completed; decision has not been saved" in screen()), screen())
+    check("...with a retry hint", "r retry saving" in screen() and "save decision:" in screen(), screen())
+    n = len(writes(e))
+    tmux("send-keys", "-t", "t", "k", "b", "U", "Down")
+    time.sleep(0.4)
+    check("further actions are refused while the save is pending", len(writes(e)) == n and re.search(r"^▸ .*User Zero", screen(), re.M) is not None, screen())
+    tmux("send-keys", "-t", "t", "q")
+    check("quit is refused until saved", wait_for(lambda: "press r to retry saving before quitting" in screen()) and "EXIT" not in screen(), screen())
+    tmux("send-keys", "-t", "t", "r")
+    time.sleep(0.4)
+    check("retrying while the disk is still read-only stays pending and does not repeat the remote call", len(writes(e)) == n and "r retry saving" in screen(), screen())
+    os.chmod(e.tmp + "/ro", 0o700)
+    tmux("send-keys", "-t", "t", "r")
+    check("once writable, r saves the decision", wait_for(lambda: os.path.exists(e.tmp + "/ro/state.json")), screen())
+    st = json.load(open(e.tmp + "/ro/state.json"))
+    check("...with the block recorded", st["entries"]["did:u0"]["decision"] == "blocked", st)
+    check("...still exactly one remote mutation", len(writes(e)) == n == 1, writes(e))
+    au = [json.loads(l) for l in open(e.tmp + "/audit.jsonl").read().splitlines()]
+    check("audit: failed save attempts, then success", [(a["ok"], a.get("detail", "")) for a in au][-1][0] is True and any(not a["ok"] and a["detail"] == "action completed; local persistence failed" for a in au), au)
+    tmux("send-keys", "-t", "t", "q")
+    check("quit works after the save", wait_for(lambda: "EXIT=0" in screen()), screen())
+    e.close()
+
+    # quitting while an action is in flight waits for it and saves the result
+    slow_create = create(BLOCK, "at://did:me/app.bsky.graph.block/slow")
+    slow_create["delay"] = 2.5
+    e = Env(act_timeline() + [slow_create])
+    start(e, binp, w=110, h=30)
+    wait_for(lambda: "User Zero" in screen())
+    tmux("send-keys", "-t", "t", "b")
+    check("a busy spinner shows while the action runs", wait_for(lambda: "working…" in screen()), screen())
+    tmux("send-keys", "-t", "t", "q")
+    time.sleep(1.0)  # the request takes 2.5s: the app must still be here, showing the spinner (as in Go)
+    check("q during an action does not quit yet", "EXIT" not in screen() and "working…" in screen(), screen())
+    check("...it quits once the action is saved", wait_for(lambda: "EXIT=0" in screen(), 8), screen())
+    st, au = reads(e)
+    check("the decision was saved and audited before exit", st and st["entries"]["did:u0"]["decision"] == "blocked" and au and au[0]["action"] == "block" and au[0]["ok"], (st, au))
+    e.close()
+
+    # F: the accounts the author follows
+    follows_routes = [{"path": "/xrpc/app.bsky.graph.getFollows", "q": {"cursor": None}, "body": {"follows": [prof("did:x1", "x1.test", "Ex One"), prof("did:x2", "x2.test", "Ex Two")], "cursor": "n2"}},
+                      {"path": "/xrpc/app.bsky.graph.getFollows", "q": {"cursor": "n2"}, "body": {"follows": [prof("did:x3", "x3.test", "Ex Three")]}}]
+    e = Env(act_timeline() + follows_routes)
+    start(e, binp, w=110, h=30)
+    wait_for(lambda: "User Zero" in screen())
+    tmux("send-keys", "-t", "t", "F")
+    check("F lists the accounts the author follows", wait_for(lambda: "Accounts followed by @user0.test" in screen() and "Ex One (@x1.test)" in screen()), screen())
+    gf = [r for r in e.pds.trace if r["path"].endswith("getFollows")]
+    check("...requested for that author, 100 per page", gf and gf[0]["query"]["actor"] == ["did:u0"] and gf[0]["query"]["limit"] == ["100"], gf)
+    tmux("send-keys", "-t", "t", "Down", "Down")
+    check("moving to the end pages in more", wait_for(lambda: "Ex Three (@x3.test)" in screen()), screen())
+    tmux("send-keys", "-t", "t", "k")
+    time.sleep(0.3)
+    check("decision keys do nothing inside the browser", not os.path.exists(e.tmp + "/state.json"))
+    tmux("send-keys", "-t", "t", "q")
+    check("q closes the browser instead of quitting", wait_for(lambda: "Accounts followed by" not in screen() and "User Zero" in screen()) and "EXIT" not in screen(), screen())
+    tmux("send-keys", "-t", "t", "q")
+    wait_for(lambda: "EXIT=0" in screen())
+    e.close()
 
     # ---- 10. raw bytes: OSC 8 links, redraw/scroll, clean shutdown sequence
     raw_checks(binp)

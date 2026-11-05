@@ -1,0 +1,37 @@
+{
+ "files": {
+  "audit.jsonl": "{\"ts\": \"<NOW>\", \"action\": \"follow\", \"did\": \"did:friend\", \"handle\": \"friend.test\", \"source\": \"cli\", \"record\": \"at://did:me/app.bsky.graph.follow/rkf\", \"detail\": \"already following\", \"ok\": true, \"snapshot\": {\"createdAt\": \"2025-10-01T02:05:24.000Z\", \"posts\": 10, \"followers\": 20, \"following\": 30, \"avatar\": true, \"bio\": \"Bio of friend\"}}\n"
+ },
+ "modes": {
+  "audit.jsonl": "0o600",
+  "home/": "0o755"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "@friend.test: you already follow them\n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.actor.getProfile",
+   "query": {
+    "actor": [
+     "friend"
+    ]
+   }
+  }
+ ]
+}

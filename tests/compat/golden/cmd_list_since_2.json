@@ -1,0 +1,52 @@
+{
+ "files": {
+  "state.json": "{\"entries\": {\"did:d\": {\"handle\": \"d.test\", \"decision\": \"kept\", \"at\": \"2024-05-01T10:00:00Z\"}, \"did:e\": {\"handle\": \"e.test\", \"decision\": \"skipped\", \"at\": \"2024-05-01T10:00:00Z\"}}}"
+ },
+ "modes": {
+  "home/": "0o755",
+  "state.json": "0o644"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "new    f1.test                          posts=5     followers=6      following=7      age=13mo     did:f1\n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.graph.getFollowers",
+   "query": {
+    "actor": [
+     "did:me"
+    ],
+    "limit": [
+     "100"
+    ]
+   }
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.actor.getProfiles",
+   "query": {
+    "actors": [
+     "did:f1"
+    ]
+   }
+  }
+ ]
+}

@@ -3,6 +3,17 @@
   "home/.local/state/bskyban/state.json": "{\"entries\": {\"did:a\": {\"handle\": \"a.test\", \"decision\": \"kept\", \"at\": \"2024-05-01T10:00:00Z\"}}}",
   "rel/dir/bskyban/state.json": "{}"
  },
+ "modes": {
+  "home/": "0o755",
+  "home/.local/": "0o755",
+  "home/.local/state/": "0o755",
+  "home/.local/state/bskyban/": "0o755",
+  "home/.local/state/bskyban/state.json": "0o644",
+  "rel/": "0o755",
+  "rel/dir/": "0o755",
+  "rel/dir/bskyban/": "0o755",
+  "rel/dir/bskyban/state.json": "0o644"
+ },
  "status": 0,
  "stderr": "",
  "stdout": "l.test                           via @r1.test                                 13mo  from l\n",

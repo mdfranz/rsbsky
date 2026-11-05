@@ -1,0 +1,13 @@
+{
+ "files": {
+  "audit.jsonl": "{\"action\": \"a\"}\n[]\n"
+ },
+ "modes": {
+  "audit.jsonl": "0o644",
+  "home/": "0o755"
+ },
+ "status": 1,
+ "stderr": "error: {TMP}/audit.jsonl line 2: json: cannot unmarshal array into Go value of type store.AuditEvent\n",
+ "stdout": "",
+ "trace": []
+}

@@ -1,0 +1,52 @@
+{
+ "files": {},
+ "modes": {
+  "home/": "0o755"
+ },
+ "status": 0,
+ "stderr": "recent posts: app.bsky.feed.getAuthorFeed: blocked (BlockedActor)\n",
+ "stdout": "Newbie (@newbie.test)\nDID:       did:newbie\nStatus:    new\nCreated:   2025-10-01T02:05:26.000Z (13mo)\nPosts:     10\nFollowers: 20\nFollowing: 30\nAvatar:    true\nURL:       https://bsky.app/profile/newbie.test\n\n  Bio   of newbie  \n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.actor.getProfile",
+   "query": {
+    "actor": [
+     "newbie"
+    ]
+   }
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.feed.getAuthorFeed",
+   "query": {
+    "actor": [
+     "did:newbie"
+    ],
+    "filter": [
+     "posts_with_replies"
+    ],
+    "limit": [
+     "5"
+    ]
+   }
+  }
+ ]
+}

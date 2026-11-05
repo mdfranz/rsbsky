@@ -1,0 +1,37 @@
+{
+ "files": {},
+ "modes": {
+  "home/": "0o755"
+ },
+ "status": 1,
+ "stderr": "error: app.bsky.graph.getFollowers: HTTP 500\n",
+ "stdout": "",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.graph.getFollowers",
+   "query": {
+    "actor": [
+     "did:me"
+    ],
+    "limit": [
+     "100"
+    ]
+   }
+  }
+ ]
+}

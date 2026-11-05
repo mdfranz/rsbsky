@@ -13,7 +13,6 @@ use ratatui::text::{Line, Span};
 use super::detail::PLine;
 use super::feed::{FeedApp, Now};
 use crate::bsky::{self, FeedItem};
-use crate::store;
 use crate::termtext::{human_age, sanitize, truncate_width, width};
 
 /// A run of cells that should be a hyperlink.
@@ -119,11 +118,8 @@ impl FeedApp {
         if fresh {
             tags.push(("new".into(), fresh_style));
         }
-        match self.decisions.get(&it.author.did).map(String::as_str) {
-            Some(store::BLOCKED) => tags.push(("blocked".into(), th.err_style())),
-            Some(store::FOLLOWED) => tags.push(("followed".into(), th.ok_style())),
-            Some(store::KEPT) => tags.push(("kept".into(), th.ok_style())),
-            _ => {}
+        if let Some((text, style)) = self.decision_tag(&it.author.did, th) {
+            tags.push((text.into(), style));
         }
         let tail_plain = tags
             .iter()
@@ -238,7 +234,7 @@ impl FeedApp {
 
     /// Posts-panel scroll position as `[34%]`, or nothing if everything fits.
     fn scroll_pos(&self, now: Now) -> Option<Span<'static>> {
-        if !self.in_post {
+        if !self.in_post || self.follows.is_some() {
             return None;
         }
         let n = self.right_lines(now).len();
@@ -331,7 +327,9 @@ pub fn render(app: &FeedApp, buf: &mut Buffer, now: Now) -> Vec<LinkRegion> {
             buf.set_line(area.x, area.y + y as u16, line, area.width);
         }
     };
-    if app.follow_loading {
+    if let Some(b) = &app.follows {
+        draw_follows(app, b, buf, area, content_top, content_rows);
+    } else if app.follow_loading {
         let l = Line::from(span(
             format!("{} loading timeline…", app.spinner()),
             th.base(),
@@ -388,6 +386,85 @@ pub fn render(app: &FeedApp, buf: &mut Buffer, now: Now) -> Vec<LinkRegion> {
         }
     }
     links
+}
+
+/// The accounts followed by the author on screen (`F`).
+fn draw_follows(
+    app: &FeedApp,
+    b: &super::feed::FollowsBrowser,
+    buf: &mut Buffer,
+    area: Rect,
+    top: usize,
+    rows: usize,
+) {
+    let th = &app.theme;
+    let mut y = top;
+    let mut put = |buf: &mut Buffer, line: Line<'static>| {
+        if y < top + rows {
+            buf.set_line(area.x, area.y + y as u16, &line, area.width);
+        }
+        y += 1;
+    };
+    put(
+        buf,
+        Line::from(span(
+            format!("Accounts followed by @{}", b.actor.handle),
+            th.heading_style(),
+        )),
+    );
+    put(buf, Line::default());
+    if b.accounts.is_empty() {
+        if b.loading {
+            put(buf, Line::from("Loading…"));
+        } else if b.loaded {
+            put(buf, Line::from("No accounts found."));
+        }
+        return;
+    }
+    let n = if app.height == 0 {
+        20
+    } else {
+        ((app.height as usize).saturating_sub(8) / 2).max(1)
+    };
+    let start = (b.selected + 1).saturating_sub(n);
+    let end = b.accounts.len().min(start + n);
+    let room = (area.width as usize).saturating_sub(4).max(10);
+    for (i, p) in b.accounts.iter().enumerate().take(end).skip(start) {
+        let name = if p.display_name.is_empty() {
+            &p.handle
+        } else {
+            &p.display_name
+        };
+        let label = truncate_width(&sanitize(&format!("{name} (@{})", p.handle)), room);
+        let sel = i == b.selected;
+        put(
+            buf,
+            Line::from(span(
+                if sel {
+                    format!("▸ {label}")
+                } else {
+                    format!("  {label}")
+                },
+                if sel { th.sel_style() } else { Style::new() },
+            )),
+        );
+        let bio = crate::termtext::collapse_ws(&sanitize(&p.description));
+        if !bio.is_empty() {
+            let bio = truncate_width(&bio, (area.width as usize).saturating_sub(4).max(1));
+            put(
+                buf,
+                Line::from(span(
+                    format!("  {bio}"),
+                    if sel { th.sel_style() } else { th.dim_style() },
+                )),
+            );
+        }
+    }
+    if b.loading {
+        put(buf, Line::from(span("Loading more…", th.dim_style())));
+    } else if !b.cursor.is_empty() && end == b.accounts.len() {
+        put(buf, Line::from(span("↓ load more", th.dim_style())));
+    }
 }
 
 /// Draws a panel line at (x, y), clipped to `max_w` columns, and records its hyperlinks.
@@ -534,6 +611,7 @@ mod tests {
             false,
             "did:me",
             "me.test",
+            crate::store::State::new(tempfile::tempdir().unwrap().keep().join("state.json")),
         );
         a.follow_loading = false;
         a.items = items;
@@ -604,8 +682,8 @@ mod tests {
             "",
             "",
             "",
-            "",
-            "↑ ↓ move · → post · enter/o open link · R refresh · q quit",
+            "↑ ↓ move  → post  b block  f follow  k keep  u unfollow  U undo",
+            "enter/o open link  R refresh  F following  q quit",
         ];
         for (i, want) in expected.iter().enumerate() {
             assert_eq!(rows[i], *want, "row {i}");
@@ -676,15 +754,16 @@ mod tests {
         a.status = "checking for new posts…".into();
         let rows = draw(&a).0;
         assert_eq!(
-            &rows[21..],
+            &rows[20..],
             [
                 "error: refresh: boom",
                 "checking for new posts…",
-                "↑ ↓ move · → post · enter/o open link · R refresh · q quit"
+                "↑ ↓ move  → post  b block  f follow  k keep  u unfollow  U undo",
+                "enter/o open link  R refresh  F following  q quit"
             ]
         );
         a.more_busy = true;
-        assert_eq!(draw(&a).0[22], "loading more…");
+        assert_eq!(draw(&a).0[21], "loading more…");
     }
 
     #[test]
@@ -737,8 +816,15 @@ mod tests {
         let (rows, _) = draw(&a);
         assert!(rows[2].ends_with('…'), "{}", rows[2]);
         assert!(rows[2].chars().count() <= 42);
-        assert_eq!(rows[12], "↑ ↓ move  → post  enter/o open link");
-        assert_eq!(rows[13], "R refresh  q quit");
+        let hints = a.hint_lines();
+        assert!(hints.len() >= 3, "{hints:?}");
+        assert_eq!(
+            &rows[14 - hints.len()..],
+            hints.as_slice(),
+            "hints are pinned to the bottom rows"
+        );
+        assert!(hints.iter().all(|l| l.chars().count() <= 42));
+        assert_eq!(hints[0], "↑ ↓ move  → post  b block  f follow");
     }
 
     #[test]
@@ -765,8 +851,14 @@ mod tests {
     #[test]
     fn decision_tags_come_from_saved_state() {
         let mut a = app_with(sample(), 70, 24);
-        a.decisions.insert("did:alice.test".into(), "kept".into());
-        a.decisions.insert("did:dave.test".into(), "blocked".into());
+        a.state.entries.insert(
+            "did:alice.test".into(),
+            crate::store::Entry::now("alice.test", "kept"),
+        );
+        a.state.entries.insert(
+            "did:dave.test".into(),
+            crate::store::Entry::now("dave.test", "blocked"),
+        );
         let rows = draw(&a).0;
         assert_eq!(rows[2], "▸ 1m    Alice (@alice.test) kept");
         assert_eq!(
@@ -892,6 +984,7 @@ mod detail_tests {
             false,
             "did:me",
             "me.test",
+            crate::store::State::new(tempfile::tempdir().unwrap().keep().join("state.json")),
         );
         a.follow_loading = false;
         a.items = vec![
@@ -973,10 +1066,13 @@ mod detail_tests {
             };
             assert_eq!(r[i], want.trim_end(), "row {i}");
         }
-        assert_eq!(
-            r[29],
-            "↑ ↓ prev/next · PgUp PgDn scroll · esc back · enter/o open link · R refresh · q quit"
+        let hints = a.hint_lines();
+        assert_eq!(&r[30 - hints.len()..], hints.as_slice());
+        assert!(
+            hints[0].starts_with("↑ ↓ prev/next  PgUp PgDn scroll  esc back  b block"),
+            "{hints:?}"
         );
+        assert!(hints.last().unwrap().ends_with("F following  q quit"));
         // the current post (also in the author's recent posts) is not repeated there
         assert_eq!(
             r.iter()
@@ -1091,7 +1187,9 @@ mod detail_tests {
                 && text.contains("(no bio)")
         );
         assert!(text.contains("Account age  5h"));
-        a.decisions.insert("did:a".into(), "kept".into());
+        a.state
+            .entries
+            .insert("did:a".into(), crate::store::Entry::now("a", "kept"));
         assert!(
             rows(&a).0.join("\n").contains("● kept")
                 && !rows(&a).0.join("\n").contains("you follow them")
@@ -1208,5 +1306,200 @@ mod detail_tests {
             &r[24..29],
             ["  link 2", "  link 3", "  link 4", "  link 5", "▸ link 6"]
         );
+    }
+}
+
+#[cfg(test)]
+mod action_tests {
+    use super::*;
+    use crate::bsky::Profile;
+    use crate::tui::actions::{ActMsg, UndoEntry};
+    use crate::tui::feed::{FollowsBrowser, Msg};
+    use crate::tui::theme::Theme;
+    use chrono::{TimeZone, Utc};
+    use std::time::Duration;
+
+    fn now() -> Now {
+        Now {
+            mono: std::time::Instant::now(),
+            wall: Utc.with_ymd_and_hms(2026, 11, 4, 12, 0, 0).unwrap(),
+        }
+    }
+
+    fn app() -> FeedApp {
+        let mut a = FeedApp::new(
+            Theme::named("dark", true, true),
+            Duration::from_secs(30),
+            false,
+            "did:me",
+            "me.test",
+            crate::store::State::new(tempfile::tempdir().unwrap().keep().join("state.json")),
+        );
+        a.follow_loading = false;
+        let mut it = FeedItem {
+            uri: "at://did:a/app.bsky.feed.post/p".into(),
+            ..Default::default()
+        };
+        it.author = Profile {
+            did: "did:a".into(),
+            handle: "alice.test".into(),
+            display_name: "Alice".into(),
+            ..Default::default()
+        };
+        it.post.text = "hello".into();
+        it.post.created_at = (now().wall - chrono::Duration::minutes(2)).to_rfc3339();
+        a.items = vec![it];
+        a.on_msg(Msg::Resize(80, 24), now());
+        a
+    }
+
+    fn rows(a: &FeedApp) -> Vec<String> {
+        let mut buf = Buffer::empty(Rect::new(0, 0, a.width, a.height));
+        render(a, &mut buf, now());
+        buffer_text(&buf)
+    }
+
+    fn account(handle: &str, name: &str, bio: &str) -> Profile {
+        Profile {
+            did: format!("did:{handle}"),
+            handle: format!("{handle}.test"),
+            display_name: name.into(),
+            description: bio.into(),
+            ..Default::default()
+        }
+    }
+
+    fn browser(accounts: Vec<Profile>, cursor: &str, selected: usize) -> FollowsBrowser {
+        FollowsBrowser {
+            req: 1,
+            actor: Profile {
+                did: "did:a".into(),
+                handle: "alice.test".into(),
+                ..Default::default()
+            },
+            accounts,
+            cursor: cursor.into(),
+            selected,
+            loading: false,
+            loaded: true,
+        }
+    }
+
+    #[test]
+    fn follows_browser_lists_accounts_with_bios() {
+        let mut a = app();
+        a.follows = Some(browser(
+            vec![
+                account("x1", "Ex One", "  likes   birds \x1b[31m "),
+                account("x2", "", ""),
+                account(
+                    "x3",
+                    "Ex Three",
+                    "an extraordinarily long biography that certainly will not fit in the eighty columns we have here",
+                ),
+            ],
+            "more",
+            1,
+        ));
+        let r = rows(&a);
+        assert_eq!(r[0], "bskyban   Following");
+        assert_eq!(r[2], "Accounts followed by @alice.test");
+        assert_eq!(&r[4..6], ["  Ex One (@x1.test)", "  likes birds"]);
+        assert_eq!(
+            r[6], "▸ x2.test (@x2.test)",
+            "no display name falls back to the handle; no bio, no second line"
+        );
+        assert_eq!(r[7], "  Ex Three (@x3.test)");
+        assert!(
+            r[8].starts_with("  an extraordinarily long")
+                && r[8].ends_with('…')
+                && r[8].chars().count() <= 80,
+            "{}",
+            r[8]
+        );
+        assert_eq!(r[9], "↓ load more", "more pages are available");
+        assert_eq!(
+            r.last().unwrap(),
+            "↑ ↓ move · enter open profile · esc back"
+        );
+    }
+
+    #[test]
+    fn follows_browser_states() {
+        let mut a = app();
+        let mut b = browser(vec![], "", 0);
+        b.loaded = false;
+        b.loading = true;
+        a.follows = Some(b.clone());
+        assert_eq!(rows(&a)[4], "Loading…");
+        b.loading = false;
+        b.loaded = true;
+        a.follows = Some(b.clone());
+        assert_eq!(rows(&a)[4], "No accounts found.");
+        a.follows = Some(browser(vec![account("x1", "One", "")], "", 0));
+        a.follows.as_mut().unwrap().loading = true;
+        assert!(rows(&a).iter().any(|l| l == "Loading more…"));
+        a.err = Some("load following: boom".into());
+        let r = rows(&a);
+        assert!(r.iter().any(|l| l == "error: load following: boom"));
+        assert_eq!(r.last().unwrap(), "R retry · esc back");
+    }
+
+    #[test]
+    fn busy_shows_the_spinner_instead_of_the_status_and_pending_shows_the_retry_hint() {
+        let mut a = app();
+        a.status = "finishing action before quitting…".into();
+        a.busy = true;
+        a.spin_frame = 2;
+        let r = rows(&a);
+        assert!(r.iter().any(|l| l == "⣻ working…"));
+        assert!(
+            !r.iter().any(|l| l.contains("finishing action")),
+            "as in Go, the spinner replaces the status"
+        );
+        a.busy = false;
+        let e = UndoEntry {
+            idx: 0,
+            profile: a.items[0].author.clone(),
+            decision: "blocked".into(),
+            record: String::new(),
+            prev: None,
+        };
+        a.pending = Some(ActMsg {
+            undo: e,
+            is_undo: false,
+            is_unfollow: false,
+            new_uri: String::new(),
+            lifted: false,
+            err: None,
+        });
+        a.status = "action completed; decision has not been saved".into();
+        a.err = Some("save decision: disk full (press r to retry saving)".into());
+        let r = rows(&a);
+        let n = r.len();
+        assert_eq!(
+            r[n - 3],
+            "error: save decision: disk full (press r to retry saving)"
+        );
+        assert_eq!(r[n - 2], "action completed; decision has not been saved");
+        assert_eq!(
+            r[n - 1],
+            "r retry saving (actions and quit wait for a successful save)"
+        );
+    }
+
+    #[test]
+    fn decision_tags_and_busy_selection() {
+        let mut a = app();
+        a.state.entries.insert(
+            "did:a".into(),
+            crate::store::Entry::now("alice.test", "followed"),
+        );
+        assert_eq!(rows(&a)[2], "▸ 2m    Alice (@alice.test) followed");
+        a.state.entries.insert(
+            "did:a".into(),
+            crate::store::Entry::now("alice.test", "blocked"),
+        );
+        assert!(rows(&a)[2].ends_with(" blocked"));
     }
 }

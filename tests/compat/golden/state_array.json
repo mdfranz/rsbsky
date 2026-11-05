@@ -2,6 +2,10 @@
  "files": {
   "state.json": "[]"
  },
+ "modes": {
+  "home/": "0o755",
+  "state.json": "0o644"
+ },
  "status": 1,
  "stderr": "error: json: cannot unmarshal array into Go value of type store.State\n",
  "stdout": "",

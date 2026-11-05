@@ -1,0 +1,71 @@
+{
+ "files": {},
+ "modes": {
+  "home/": "0o755"
+ },
+ "status": 1,
+ "stderr": "error: app.bsky.actor.getProfiles: down (Upstream)\n",
+ "stdout": "",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.graph.getFollowers",
+   "query": {
+    "actor": [
+     "did:me"
+    ],
+    "limit": [
+     "100"
+    ]
+   }
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.graph.getFollowers",
+   "query": {
+    "actor": [
+     "did:me"
+    ],
+    "cursor": [
+     "c2"
+    ],
+    "limit": [
+     "100"
+    ]
+   }
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.actor.getProfiles",
+   "query": {
+    "actors": [
+     "did:f1",
+     "did:f3",
+     "did:d",
+     "did:f4",
+     "did:e"
+    ]
+   }
+  }
+ ]
+}

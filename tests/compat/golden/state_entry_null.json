@@ -1,6 +1,10 @@
 {
  "files": {
-  "state.json": "{\"entries\":{\"did:a\":null}}"
+  "state.json": "{\"entries\": {\"did:a\": null}}"
+ },
+ "modes": {
+  "home/": "0o755",
+  "state.json": "0o644"
  },
  "status": 0,
  "stderr": "",

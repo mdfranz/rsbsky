@@ -1,0 +1,13 @@
+{
+ "files": {
+  "audit.jsonl": "null\n{\"action\": \"x\", \"source\": \"cli\", \"ok\": true, \"handle\": \"h\"}\n"
+ },
+ "modes": {
+  "audit.jsonl": "0o644",
+  "home/": "0o755"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "           @                                    FAILED: \n  x        @h                                 cli\n",
+ "trace": []
+}

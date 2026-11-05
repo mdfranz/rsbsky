@@ -14,11 +14,12 @@ use std::time::{Duration, Instant};
 use chrono::{DateTime, Utc};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
+use super::actions::{ActMsg, ActRequest, UndoEntry};
 use super::detail::PLine;
 use super::picker::{PickLink, post_links};
 use super::theme::Theme;
 use crate::bsky::{FeedItem, Post, Profile};
-use crate::store::AuditEvent;
+use crate::store::{AuditEvent, State};
 use crate::termtext::{clip, collapse_ws};
 
 /// Timeline items per page.
@@ -105,6 +106,13 @@ pub enum Msg {
         did: String,
         result: Result<Vec<Post>, String>,
     },
+    /// A remote action requested with [`Effect::Act`] finished.
+    Act(Box<ActMsg>),
+    /// A page of the accounts being browsed (see [`Effect::LoadFollows`]).
+    FollowsPage {
+        req: u64,
+        result: Result<(Vec<Profile>, String), String>,
+    },
     /// A browser launch requested with [`Effect::Open`] finished.
     OpenDone {
         result: Result<(), String>,
@@ -131,6 +139,14 @@ pub enum Effect {
     FetchProfile {
         did: String,
     },
+    /// Perform the remote half of a decision (answered with [`Msg::Act`]).
+    Act(Box<ActRequest>),
+    /// Load a page of the accounts `actor` follows (answered with [`Msg::FollowsPage`]).
+    LoadFollows {
+        req: u64,
+        actor: String,
+        cursor: String,
+    },
     /// Open `urls` in the browser; the runtime answers with [`Msg::OpenDone`].
     Open {
         urls: Vec<String>,
@@ -138,6 +154,18 @@ pub enum Effect {
         err_prefix: &'static str,
     },
     Quit,
+}
+
+/// The accounts followed by the author on screen (`F`).
+#[derive(Debug, Clone)]
+pub struct FollowsBrowser {
+    pub req: u64,
+    pub actor: Profile,
+    pub accounts: Vec<Profile>,
+    pub cursor: String,
+    pub selected: usize,
+    pub loading: bool,
+    pub loaded: bool,
 }
 
 /// A profile that is loading or has loaded.
@@ -168,8 +196,20 @@ pub struct FeedApp {
     pub refresh: Duration,
     pub me_did: String,
     pub me_handle: String,
-    /// Recorded decision per DID, for the blocked/followed/kept tags.
-    pub decisions: HashMap<String, String>,
+    /// Recorded decisions (`state.json`); also drives the blocked/followed/kept tags.
+    pub state: State,
+    /// Block/follow records behind current decisions (this session).
+    pub records: HashMap<String, String>,
+    /// Decisions made this session, for `U`.
+    pub history: Vec<UndoEntry>,
+    /// Action awaiting a second keypress (`b` on someone you follow, `u`).
+    pub confirm: String,
+    /// A remote action succeeded but its local save failed: only `r` (retry) and nothing else.
+    pub pending: Option<ActMsg>,
+    /// `q` was pressed while an action ran: quit once it is saved and audited.
+    pub quitting: bool,
+    /// The follows browser, while open.
+    pub follows: Option<FollowsBrowser>,
 
     pub items: Vec<FeedItem>,
     pub cur: usize,
@@ -225,6 +265,7 @@ impl FeedApp {
         fancy: bool,
         me_did: &str,
         me_handle: &str,
+        state: State,
     ) -> Self {
         FeedApp {
             theme,
@@ -232,7 +273,13 @@ impl FeedApp {
             refresh,
             me_did: me_did.into(),
             me_handle: me_handle.into(),
-            decisions: HashMap::new(),
+            state,
+            records: HashMap::new(),
+            history: Vec::new(),
+            confirm: String::new(),
+            pending: None,
+            quitting: false,
+            follows: None,
             items: Vec::new(),
             cur: 0,
             list_top: 0,
@@ -313,15 +360,44 @@ impl FeedApp {
     }
 
     pub fn hint_items(&self) -> Vec<String> {
+        if self.follows.is_some() {
+            return if self.err.is_some() {
+                vec!["R retry".into(), "esc back".into()]
+            } else {
+                ["↑ ↓ move", "enter open profile", "esc back"]
+                    .map(String::from)
+                    .to_vec()
+            };
+        }
+        if self.pending.is_some() {
+            return vec!["r retry saving (actions and quit wait for a successful save)".into()];
+        }
         if self.picking.is_some() {
             return ["↑ ↓ select", "enter open", "esc cancel"]
                 .map(String::from)
                 .to_vec();
         }
         let mut items: Vec<&str> = if self.in_post {
-            vec!["↑ ↓ prev/next", "PgUp PgDn scroll", "esc back"]
+            vec![
+                "↑ ↓ prev/next",
+                "PgUp PgDn scroll",
+                "esc back",
+                "b block",
+                "f follow",
+                "k keep",
+                "u unfollow",
+                "U undo",
+            ]
         } else {
-            vec!["↑ ↓ move", "→ post"]
+            vec![
+                "↑ ↓ move",
+                "→ post",
+                "b block",
+                "f follow",
+                "k keep",
+                "u unfollow",
+                "U undo",
+            ]
         };
         items.push("enter/o open link");
         if self
@@ -331,7 +407,7 @@ impl FeedApp {
         {
             items.push("i open images");
         }
-        items.extend(["R refresh", "q quit"]);
+        items.extend(["R refresh", "F following", "q quit"]);
         items.into_iter().map(String::from).collect()
     }
 
@@ -479,11 +555,16 @@ impl FeedApp {
     // ------------------------------------------------------------------ input
 
     pub fn on_key(&mut self, key: KeyEvent, now: Now) -> Vec<Effect> {
-        if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
-            return vec![Effect::Quit];
-        }
-        if self.picking.is_some() {
+        let ctrl_c =
+            key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL);
+        if self.picking.is_some() && !ctrl_c {
             return self.pick_key(key.code);
+        }
+        if self.follows.is_some() && !ctrl_c {
+            return self.follows_key(key.code);
+        }
+        if ctrl_c || (key.code == KeyCode::Char('q') && key.modifiers.is_empty()) {
+            return self.quit_key();
         }
         if key
             .modifiers
@@ -491,17 +572,31 @@ impl FeedApp {
         {
             return Vec::new();
         }
+        if self.pending.is_some() {
+            // the remote action is done; only the local save is outstanding
+            return match (key.code, self.pending.clone()) {
+                (KeyCode::Char('r'), Some(msg)) => self.apply_act(msg),
+                _ => Vec::new(),
+            };
+        }
+        let confirm = std::mem::take(&mut self.confirm);
+        if self.busy {
+            return Vec::new();
+        }
         match key.code {
-            KeyCode::Char('q') => return vec![Effect::Quit],
+            KeyCode::Char('u') => return self.unfollow_key(&confirm),
+            KeyCode::Char('F') => return self.open_follows(),
+            KeyCode::Char('o') => {
+                self.open_key();
+                return Vec::new();
+            }
+            KeyCode::Char('i') => return self.open_images(),
             KeyCode::Char('R') => {
                 let mut effects = self.refresh_key(now);
                 effects.extend(self.prefetch());
                 return effects;
             }
             _ => {}
-        }
-        if self.busy {
-            return Vec::new();
         }
         let page = self.right_avail(now).saturating_sub(2).max(1);
         let rows = (self.avail() / (PREVIEW_LINES + 2)).max(1);
@@ -532,15 +627,22 @@ impl FeedApp {
                 }
                 None
             }
-            KeyCode::Enter | KeyCode::Char('o') => {
+            KeyCode::Enter => {
                 self.open_key();
                 None
             }
-            KeyCode::Char('i') => return self.open_images(),
             KeyCode::Esc | KeyCode::Backspace => {
                 self.in_post = false;
                 self.scroll = 0;
                 self.ensure_visible();
+                None
+            }
+            KeyCode::Char('U') => return self.undo_key(),
+            KeyCode::Char(c @ ('b' | 'f' | 'k')) => {
+                let effects = self.decision_key(c, &confirm);
+                if !effects.is_empty() {
+                    return effects;
+                }
                 None
             }
             _ => None,
@@ -556,6 +658,96 @@ impl FeedApp {
         effects.extend(self.prefetch());
         self.clamp_scroll(now);
         effects
+    }
+
+    /// `q` / Ctrl+C: quit, unless an action is running (wait for it) or its decision has
+    /// not been saved yet (retry first).
+    fn quit_key(&mut self) -> Vec<Effect> {
+        if self.pending.is_some() {
+            self.status =
+                "decision has not been saved; press r to retry saving before quitting".into();
+            return Vec::new();
+        }
+        if self.busy {
+            self.quitting = true;
+            self.status = "finishing action before quitting…".into();
+            return Vec::new();
+        }
+        vec![Effect::Quit]
+    }
+
+    // ------------------------------------------------------------------ follows browser
+
+    /// `F`: browse the accounts the author on screen follows.
+    fn open_follows(&mut self) -> Vec<Effect> {
+        let Some(actor) = self.subject() else {
+            return Vec::new();
+        };
+        let req = self.id();
+        self.follows = Some(FollowsBrowser {
+            req,
+            actor,
+            accounts: Vec::new(),
+            cursor: String::new(),
+            selected: 0,
+            loading: false,
+            loaded: false,
+        });
+        self.err = None;
+        self.status.clear();
+        self.load_follows()
+    }
+
+    fn load_follows(&mut self) -> Vec<Effect> {
+        let Some(b) = self.follows.as_mut() else {
+            return Vec::new();
+        };
+        if b.loading {
+            return Vec::new();
+        }
+        b.loading = true;
+        vec![Effect::LoadFollows {
+            req: b.req,
+            actor: b.actor.did.clone(),
+            cursor: b.cursor.clone(),
+        }]
+    }
+
+    fn follows_key(&mut self, code: KeyCode) -> Vec<Effect> {
+        let Some(b) = self.follows.as_mut() else {
+            return Vec::new();
+        };
+        match code {
+            KeyCode::Esc | KeyCode::Backspace | KeyCode::Char('q') => {
+                self.follows = None;
+                self.err = None;
+            }
+            KeyCode::Up => b.selected = b.selected.saturating_sub(1),
+            KeyCode::Down => {
+                if b.selected + 1 < b.accounts.len() {
+                    b.selected += 1;
+                }
+                if b.selected + 1 >= b.accounts.len() && b.loaded && !b.cursor.is_empty() {
+                    return self.load_follows();
+                }
+            }
+            KeyCode::Char('R') => {
+                if !b.loaded || !b.cursor.is_empty() {
+                    return self.load_follows();
+                }
+            }
+            KeyCode::Enter | KeyCode::Char('o') => {
+                if let Some(p) = b.accounts.get(b.selected) {
+                    return vec![Effect::Open {
+                        urls: vec![format!("https://bsky.app/profile/{}", p.did)],
+                        status: format!("opened @{}'s profile", p.handle),
+                        err_prefix: "open profile",
+                    }];
+                }
+            }
+            _ => {}
+        }
+        Vec::new()
     }
 
     /// `o` / Enter: offer the selected post's links.
@@ -803,6 +995,23 @@ impl FeedApp {
                 self.clamp_scroll(now);
                 Vec::new()
             }
+            Msg::Act(msg) => self.apply_act(*msg),
+            Msg::FollowsPage { req, result } => {
+                let Some(b) = self.follows.as_mut().filter(|b| b.req == req) else {
+                    return Vec::new();
+                };
+                b.loading = false;
+                match result {
+                    Err(e) => self.err = Some(format!("load following: {e}")),
+                    Ok((accounts, cursor)) => {
+                        b.accounts.extend(accounts);
+                        b.cursor = cursor;
+                        b.loaded = true;
+                        self.err = None;
+                    }
+                }
+                Vec::new()
+            }
             Msg::OpenDone {
                 result,
                 status,
@@ -964,6 +1173,7 @@ mod tests {
             true,
             "did:me",
             "me.test",
+            State::new(tempfile::tempdir().unwrap().keep().join("state.json")),
         );
         a.width = 100;
         a.height = 40;
@@ -1807,8 +2017,14 @@ mod tests {
             [
                 "↑ ↓ move",
                 "→ post",
+                "b block",
+                "f follow",
+                "k keep",
+                "u unfollow",
+                "U undo",
                 "enter/o open link",
                 "R refresh",
+                "F following",
                 "q quit"
             ]
         );
@@ -1907,6 +2123,801 @@ mod tests {
         assert!(
             eff.iter()
                 .any(|e| matches!(e, Effect::LoadPage { cursor, .. } if cursor == "next"))
+        );
+    }
+
+    // ---------------------------------------------------------------- decisions (Phase 4)
+
+    use super::super::actions::{ActMsg, ActRequest};
+    use crate::store::Entry;
+
+    fn authored(n: usize) -> FeedApp {
+        let mut a = with_authors(n);
+        a.tl_cursor.clear(); // these tests are not about paging
+        for (i, it) in a.items.iter_mut().enumerate() {
+            it.author.handle = format!("user{i}.test");
+            it.author.display_name = format!("User {i}");
+        }
+        a
+    }
+
+    fn act_req(eff: &[Effect]) -> ActRequest {
+        match eff {
+            [Effect::Act(r)] => (**r).clone(),
+            other => panic!("expected one Act effect, got {other:?}"),
+        }
+    }
+
+    fn ok_msg(req: &ActRequest, new_uri: &str) -> ActMsg {
+        let (undo, is_undo, is_unfollow, lifted) = match req {
+            ActRequest::Decide { entry, lift, .. } => (entry.clone(), false, false, *lift),
+            ActRequest::Undo(e) => (e.clone(), true, false, false),
+            ActRequest::Unfollow(e) => (e.clone(), false, true, false),
+        };
+        ActMsg {
+            undo,
+            is_undo,
+            is_unfollow,
+            new_uri: new_uri.into(),
+            lifted,
+            err: None,
+        }
+    }
+
+    fn audits(eff: &[Effect]) -> Vec<AuditEvent> {
+        eff.iter()
+            .filter_map(|e| {
+                if let Effect::Audit(a) = e {
+                    Some((**a).clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    fn feed_state(a: &FeedApp) -> State {
+        State::load(a.state.path()).unwrap()
+    }
+
+    /// Breaks saving: the atomic temp file path becomes a directory.
+    fn break_saves(a: &FeedApp) -> std::path::PathBuf {
+        let tmp = format!("{}.tmp", a.state.path().display());
+        std::fs::create_dir_all(&tmp).unwrap();
+        tmp.into()
+    }
+
+    #[test]
+    fn block_a_stranger_goes_remote_then_saves_audits_and_can_be_undone() {
+        let mut a = authored(3);
+        a.items[0].by = "carol.test".into();
+        let now = Now::current();
+        let req = act_req(&a.on_key(key(KeyCode::Char('b')), now));
+        assert!(a.busy);
+        let ActRequest::Decide { entry, lift, known } = &req else {
+            panic!()
+        };
+        assert_eq!(
+            (
+                entry.decision.as_str(),
+                *lift,
+                known.as_str(),
+                entry.profile.did.as_str()
+            ),
+            ("blocked", false, "", "did:a0")
+        );
+        assert!(
+            a.state.entries.is_empty(),
+            "nothing is saved before the remote action completes"
+        );
+        assert!(
+            a.on_key(key(KeyCode::Down), now).is_empty() && a.cur == 0,
+            "keys are ignored while busy"
+        );
+
+        let eff = a.on_msg(
+            Msg::Act(Box::new(ok_msg(
+                &req,
+                "at://did:me/app.bsky.graph.block/r1",
+            ))),
+            now,
+        );
+        assert!(!a.busy);
+        assert_eq!(a.status, "blocked @user0.test");
+        assert_eq!(a.state.decision("did:a0"), "blocked");
+        assert_eq!(
+            feed_state(&a).decision("did:a0"),
+            "blocked",
+            "saved to disk"
+        );
+        assert_eq!(a.records["did:a0"], "at://did:me/app.bsky.graph.block/r1");
+        let evs = audits(&eff);
+        assert_eq!(evs.len(), 1);
+        let ev = &evs[0];
+        assert_eq!(
+            (
+                ev.action.as_str(),
+                ev.source.as_str(),
+                ev.via.as_str(),
+                ev.ok
+            ),
+            ("block", "tui:following", "carol.test", true)
+        );
+        assert_eq!(
+            (
+                ev.did.as_str(),
+                ev.handle.as_str(),
+                ev.record.as_str(),
+                ev.prev.as_str()
+            ),
+            (
+                "did:a0",
+                "user0.test",
+                "at://did:me/app.bsky.graph.block/r1",
+                ""
+            )
+        );
+        assert!(
+            ev.snapshot.as_ref().is_some_and(|s| s.posts.is_none()),
+            "no counts for a timeline summary"
+        );
+
+        // the list now tags the author, and a second b says so
+        assert!(a.on_key(key(KeyCode::Char('b')), now).is_empty());
+        assert_eq!(a.status, "@user0.test is already blocked");
+
+        // undo deletes exactly the record it created and forgets the decision
+        let req = act_req(&a.on_key(key(KeyCode::Char('U')), now));
+        let ActRequest::Undo(e) = &req else { panic!() };
+        assert_eq!(e.record, "at://did:me/app.bsky.graph.block/r1");
+        let eff = a.on_msg(Msg::Act(Box::new(ok_msg(&req, ""))), now);
+        assert_eq!(a.status, "undid blocked for @user0.test");
+        assert!(a.state.entries.is_empty() && feed_state(&a).entries.is_empty());
+        let ev = &audits(&eff)[0];
+        assert_eq!(
+            (
+                ev.action.as_str(),
+                ev.detail.as_str(),
+                ev.prev.as_str(),
+                ev.record.as_str()
+            ),
+            (
+                "undo",
+                "undid blocked",
+                "blocked",
+                "at://did:me/app.bsky.graph.block/r1"
+            )
+        );
+        assert!(a.on_key(key(KeyCode::Char('U')), now).is_empty());
+        assert_eq!(a.status, "nothing to undo");
+    }
+
+    #[test]
+    fn blocking_someone_you_follow_needs_a_second_press_and_any_key_cancels() {
+        let mut a = authored(3);
+        a.items[0].author.viewer.following = "at://did:me/app.bsky.graph.follow/f0".into();
+        let now = Now::current();
+        assert!(a.on_key(key(KeyCode::Char('b')), now).is_empty());
+        assert_eq!(
+            a.status,
+            "You follow @user0.test. Press b again to block them."
+        );
+        assert!(!a.busy);
+        a.on_key(key(KeyCode::Down), now); // cancels
+        a.on_key(key(KeyCode::Up), now);
+        assert!(
+            a.on_key(key(KeyCode::Char('b')), now).is_empty(),
+            "the confirmation was reset"
+        );
+        let eff = a.on_key(key(KeyCode::Char('b')), now);
+        assert!(matches!(act_req(&eff), ActRequest::Decide { .. }));
+    }
+
+    #[test]
+    fn cannot_act_on_yourself_and_duplicate_decisions_are_refused() {
+        let mut a = authored(2);
+        a.items[0].author.did = "did:me".into();
+        let now = Now::current();
+        assert!(a.on_key(key(KeyCode::Char('b')), now).is_empty());
+        assert_eq!(a.status, "that's you");
+        a.items[0].author.did = "did:a0".into();
+        a.items[0].author.viewer.following = "at://x".into();
+        assert!(a.on_key(key(KeyCode::Char('f')), now).is_empty());
+        assert_eq!(a.status, "you already follow @user0.test");
+        a.state
+            .entries
+            .insert("did:a0".into(), Entry::now("user0.test", "kept"));
+        assert!(a.on_key(key(KeyCode::Char('k')), now).is_empty());
+        assert_eq!(a.status, "@user0.test is already kept");
+    }
+
+    #[test]
+    fn overriding_a_block_lifts_it_first_and_audits_both_steps() {
+        let mut a = authored(2);
+        a.state
+            .entries
+            .insert("did:a0".into(), Entry::now("user0.test", "blocked"));
+        a.records.insert(
+            "did:a0".into(),
+            "at://did:me/app.bsky.graph.block/old".into(),
+        );
+        let now = Now::current();
+        let req = act_req(&a.on_key(key(KeyCode::Char('k')), now));
+        let ActRequest::Decide { lift, known, entry } = &req else {
+            panic!()
+        };
+        assert!(*lift);
+        assert_eq!(
+            known, "at://did:me/app.bsky.graph.block/old",
+            "the session's record is used"
+        );
+        assert_eq!(entry.prev.as_ref().unwrap().decision, "blocked");
+        let eff = a.on_msg(Msg::Act(Box::new(ok_msg(&req, ""))), now);
+        let evs = audits(&eff);
+        assert_eq!(
+            evs.iter().map(|e| e.action.as_str()).collect::<Vec<_>>(),
+            ["unblock", "keep"]
+        );
+        assert_eq!(
+            (
+                evs[0].detail.as_str(),
+                evs[0].record.as_str(),
+                evs[1].prev.as_str()
+            ),
+            ("lifted by kept", "", "blocked")
+        );
+        assert!(
+            !a.records.contains_key("did:a0"),
+            "a kept account has no remote record"
+        );
+        assert_eq!(a.state.decision("did:a0"), "kept");
+    }
+
+    #[test]
+    fn the_lifted_record_is_looked_up_from_the_loaded_profile_when_not_known() {
+        let mut a = authored(2);
+        a.state
+            .entries
+            .insert("did:a0".into(), Entry::now("user0.test", "followed"));
+        let mut p = Profile {
+            did: "did:a0".into(),
+            ..Default::default()
+        };
+        p.viewer.following = "at://did:me/app.bsky.graph.follow/fromprofile".into();
+        a.profiles
+            .insert("did:a0".into(), ProfileSlot::Loaded(Box::new(p)));
+        let req = act_req(&a.on_key(key(KeyCode::Char('k')), Now::current()));
+        let ActRequest::Decide { known, .. } = &req else {
+            panic!()
+        };
+        assert_eq!(known, "at://did:me/app.bsky.graph.follow/fromprofile");
+    }
+
+    #[test]
+    fn undo_restores_the_lifted_record_and_later_undos_target_the_replacement() {
+        let mut a = authored(2);
+        let now = Now::current();
+        // block, then keep (lifts the block)
+        let req = act_req(&a.on_key(key(KeyCode::Char('b')), now));
+        a.on_msg(
+            Msg::Act(Box::new(ok_msg(
+                &req,
+                "at://did:me/app.bsky.graph.block/orig",
+            ))),
+            now,
+        );
+        let req = act_req(&a.on_key(key(KeyCode::Char('k')), now));
+        a.on_msg(Msg::Act(Box::new(ok_msg(&req, ""))), now);
+        assert_eq!(a.history.len(), 2);
+        // undo keep: the block is created again, under a new record
+        let req = act_req(&a.on_key(key(KeyCode::Char('U')), now));
+        let ActRequest::Undo(e) = &req else { panic!() };
+        assert_eq!(
+            (
+                e.decision.as_str(),
+                e.prev.as_ref().unwrap().decision.as_str()
+            ),
+            ("kept", "blocked")
+        );
+        a.on_msg(
+            Msg::Act(Box::new(ok_msg(
+                &req,
+                "at://did:me/app.bsky.graph.block/replacement",
+            ))),
+            now,
+        );
+        assert_eq!(
+            a.state.decision("did:a0"),
+            "blocked",
+            "the previous decision is back"
+        );
+        assert_eq!(
+            a.records["did:a0"],
+            "at://did:me/app.bsky.graph.block/replacement"
+        );
+        // undoing the original block must now delete the replacement, not the deleted record
+        let req = act_req(&a.on_key(key(KeyCode::Char('U')), now));
+        let ActRequest::Undo(e) = &req else { panic!() };
+        assert_eq!(e.record, "at://did:me/app.bsky.graph.block/replacement");
+        a.on_msg(Msg::Act(Box::new(ok_msg(&req, ""))), now);
+        assert!(a.state.entries.is_empty());
+    }
+
+    #[test]
+    fn unfollow_asks_twice_then_clears_a_follow_decision_and_the_viewer_state() {
+        let mut a = authored(3);
+        a.items[0].author.viewer.following = "at://did:me/app.bsky.graph.follow/f0".into();
+        a.items[1].author.did = "did:a0".into(); // the same author appears twice
+        a.items[1].author.viewer.following = "at://did:me/app.bsky.graph.follow/f0".into();
+        a.state
+            .entries
+            .insert("did:a0".into(), Entry::now("user0.test", "followed"));
+        let now = Now::current();
+        assert!(a.on_key(key(KeyCode::Char('u')), now).is_empty());
+        assert_eq!(a.status, "Unfollow @user0.test? Press u again to confirm.");
+        let req = act_req(&a.on_key(key(KeyCode::Char('u')), now));
+        let ActRequest::Unfollow(e) = &req else {
+            panic!()
+        };
+        assert_eq!(e.record, "at://did:me/app.bsky.graph.follow/f0");
+        assert!(a.busy && a.status.is_empty());
+        let eff = a.on_msg(Msg::Act(Box::new(ok_msg(&req, ""))), now);
+        assert_eq!(a.status, "unfollowed @user0.test");
+        assert!(a.state.entries.is_empty() && feed_state(&a).entries.is_empty());
+        assert!(
+            a.items
+                .iter()
+                .filter(|i| i.author.did == "did:a0")
+                .all(|i| i.author.viewer.following.is_empty())
+        );
+        let ev = &audits(&eff)[0];
+        assert_eq!(
+            (ev.action.as_str(), ev.record.as_str()),
+            ("unfollow", "at://did:me/app.bsky.graph.follow/f0")
+        );
+    }
+
+    #[test]
+    fn unfollow_keeps_other_decisions_and_uses_the_session_record_when_the_profile_lacks_one() {
+        let mut a = authored(2);
+        a.state
+            .entries
+            .insert("did:a0".into(), Entry::now("user0.test", "followed"));
+        a.records.insert(
+            "did:a0".into(),
+            "at://did:me/app.bsky.graph.follow/session".into(),
+        );
+        let now = Now::current();
+        a.on_key(key(KeyCode::Char('u')), now);
+        let req = act_req(&a.on_key(key(KeyCode::Char('u')), now));
+        let ActRequest::Unfollow(e) = &req else {
+            panic!()
+        };
+        assert_eq!(e.record, "at://did:me/app.bsky.graph.follow/session");
+        // a "kept" account that happens to be followed keeps its decision when unfollowed
+        a.busy = false;
+        a.state
+            .entries
+            .insert("did:a0".into(), Entry::now("user0.test", "kept"));
+        a.on_msg(Msg::Act(Box::new(ok_msg(&req, ""))), now);
+        assert_eq!(a.state.decision("did:a0"), "kept");
+    }
+
+    #[test]
+    fn a_failed_remote_action_changes_nothing_but_is_shown_and_audited() {
+        let mut a = authored(2);
+        let now = Now::current();
+        let req = act_req(&a.on_key(key(KeyCode::Char('b')), now));
+        let mut msg = ok_msg(&req, "");
+        msg.err = Some("com.atproto.repo.createRecord: nope (InvalidRequest)".into());
+        let eff = a.on_msg(Msg::Act(Box::new(msg)), now);
+        assert!(!a.busy);
+        assert_eq!(
+            a.err.as_deref(),
+            Some("com.atproto.repo.createRecord: nope (InvalidRequest)")
+        );
+        assert!(
+            a.state.entries.is_empty()
+                && a.history.is_empty()
+                && a.records.is_empty()
+                && a.pending.is_none()
+        );
+        assert!(!a.state.path().exists(), "no state file written");
+        let ev = &audits(&eff)[0];
+        assert!(!ev.ok && ev.action == "block" && ev.error.contains("nope"));
+        // the user can simply try again
+        assert!(matches!(
+            act_req(&a.on_key(key(KeyCode::Char('b')), now)),
+            ActRequest::Decide { .. }
+        ));
+    }
+
+    #[test]
+    fn a_failed_undo_stays_undoable() {
+        let mut a = authored(2);
+        let now = Now::current();
+        let req = act_req(&a.on_key(key(KeyCode::Char('b')), now));
+        a.on_msg(Msg::Act(Box::new(ok_msg(&req, "at://r"))), now);
+        let req = act_req(&a.on_key(key(KeyCode::Char('U')), now));
+        assert!(a.history.is_empty());
+        let mut msg = ok_msg(&req, "");
+        msg.err = Some("down".into());
+        a.on_msg(Msg::Act(Box::new(msg)), now);
+        assert_eq!(a.history.len(), 1, "put back so it can be retried");
+        assert_eq!(
+            a.state.decision("did:a0"),
+            "blocked",
+            "and the decision is untouched"
+        );
+        assert!(matches!(
+            act_req(&a.on_key(key(KeyCode::Char('U')), now)),
+            ActRequest::Undo(_)
+        ));
+    }
+
+    #[test]
+    fn a_failed_lift_forgets_the_record_so_it_is_looked_up_again() {
+        let mut a = authored(2);
+        a.state
+            .entries
+            .insert("did:a0".into(), Entry::now("user0.test", "blocked"));
+        a.records.insert("did:a0".into(), "at://stale".into());
+        let now = Now::current();
+        let req = act_req(&a.on_key(key(KeyCode::Char('f')), now));
+        let mut msg = ok_msg(&req, "");
+        msg.lifted = true;
+        msg.err = Some("create failed after the block was removed".into());
+        a.on_msg(Msg::Act(Box::new(msg)), now);
+        assert!(!a.records.contains_key("did:a0"));
+        assert_eq!(
+            a.state.decision("did:a0"),
+            "blocked",
+            "the saved decision is not changed by a failure"
+        );
+    }
+
+    #[test]
+    fn remote_success_then_save_failure_keeps_the_result_and_retries_only_the_save() {
+        let mut a = authored(2);
+        let now = Now::current();
+        let tmp = break_saves(&a);
+        let req = act_req(&a.on_key(key(KeyCode::Char('b')), now));
+        let eff = a.on_msg(
+            Msg::Act(Box::new(ok_msg(
+                &req,
+                "at://did:me/app.bsky.graph.block/r9",
+            ))),
+            now,
+        );
+        // the remote record exists; locally nothing was saved
+        assert!(a.pending.is_some() && !a.busy);
+        assert!(a.state.entries.is_empty(), "in-memory state rolled back");
+        assert!(a.err.as_deref().unwrap().starts_with("save decision: "));
+        assert!(
+            a.err
+                .as_deref()
+                .unwrap()
+                .ends_with("(press r to retry saving)")
+        );
+        assert_eq!(a.status, "action completed; decision has not been saved");
+        let ev = &audits(&eff)[0];
+        assert!(
+            !ev.ok
+                && ev.detail == "action completed; local persistence failed"
+                && ev.error.contains("save decision")
+        );
+        assert_eq!(
+            ev.record, "at://did:me/app.bsky.graph.block/r9",
+            "the created record is still recorded"
+        );
+        assert_eq!(
+            a.hint_items(),
+            ["r retry saving (actions and quit wait for a successful save)"]
+        );
+
+        // conflicting actions, navigation and quitting are blocked
+        for k in [
+            KeyCode::Char('k'),
+            KeyCode::Char('b'),
+            KeyCode::Char('f'),
+            KeyCode::Char('U'),
+            KeyCode::Char('u'),
+            KeyCode::Down,
+            KeyCode::Char('R'),
+            KeyCode::Char('F'),
+            KeyCode::Enter,
+        ] {
+            assert!(
+                a.on_key(key(k), now).is_empty(),
+                "{k:?} must do nothing while a save is pending"
+            );
+        }
+        assert_eq!(a.cur, 0);
+        assert!(
+            a.on_key(key(KeyCode::Char('q')), now).is_empty(),
+            "quit is refused"
+        );
+        assert_eq!(
+            a.status,
+            "decision has not been saved; press r to retry saving before quitting"
+        );
+        assert!(
+            a.on_key(
+                KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+                now
+            )
+            .is_empty(),
+            "ctrl+c too"
+        );
+
+        // retrying while the disk is still broken: still pending, no second remote action
+        let eff = a.on_key(key(KeyCode::Char('r')), now);
+        assert!(a.pending.is_some());
+        assert!(
+            eff.iter().all(|e| !matches!(e, Effect::Act(_))),
+            "a retry never repeats the remote mutation"
+        );
+        assert_eq!(audits(&eff).len(), 1, "each failed attempt is audited");
+
+        // fix the disk: the retry saves, audits success, and unblocks everything
+        std::fs::remove_dir(&tmp).unwrap();
+        let eff = a.on_key(key(KeyCode::Char('r')), now);
+        assert!(a.pending.is_none() && a.err.is_none());
+        assert!(eff.iter().all(|e| !matches!(e, Effect::Act(_))));
+        let evs = audits(&eff);
+        assert_eq!(evs.len(), 1);
+        assert!(
+            evs[0].ok
+                && evs[0].action == "block"
+                && evs[0].record == "at://did:me/app.bsky.graph.block/r9"
+        );
+        assert_eq!(feed_state(&a).decision("did:a0"), "blocked");
+        assert_eq!(a.records["did:a0"], "at://did:me/app.bsky.graph.block/r9");
+        assert_eq!(a.history.len(), 1);
+        assert_eq!(a.on_key(key(KeyCode::Char('q')), now), [Effect::Quit]);
+    }
+
+    #[test]
+    fn a_pending_unfollow_or_undo_retries_its_own_kind_of_save() {
+        let mut a = authored(2);
+        a.state
+            .entries
+            .insert("did:a0".into(), Entry::now("user0.test", "followed"));
+        a.state.save().unwrap();
+        let now = Now::current();
+        a.on_key(key(KeyCode::Char('u')), now);
+        let req = act_req(&a.on_key(key(KeyCode::Char('u')), now));
+        let tmp = break_saves(&a);
+        a.on_msg(Msg::Act(Box::new(ok_msg(&req, ""))), now);
+        assert!(a.pending.as_ref().is_some_and(|p| p.is_unfollow));
+        assert_eq!(
+            a.state.decision("did:a0"),
+            "followed",
+            "rolled back until the delete is saved"
+        );
+        std::fs::remove_dir(&tmp).unwrap();
+        a.on_key(key(KeyCode::Char('r')), now);
+        assert!(a.pending.is_none() && feed_state(&a).entries.is_empty());
+        assert_eq!(a.status, "unfollowed @user0.test");
+    }
+
+    #[test]
+    fn quitting_while_an_action_runs_waits_for_it_and_never_loses_the_save() {
+        let mut a = authored(2);
+        let now = Now::current();
+        let req = act_req(&a.on_key(key(KeyCode::Char('b')), now));
+        assert!(a.on_key(key(KeyCode::Char('q')), now).is_empty());
+        assert!(a.quitting && a.status == "finishing action before quitting…");
+        let eff = a.on_msg(Msg::Act(Box::new(ok_msg(&req, "at://r"))), now);
+        assert!(
+            eff.contains(&Effect::Quit),
+            "quits once the result is saved and audited"
+        );
+        assert_eq!(audits(&eff).len(), 1);
+        assert_eq!(feed_state(&a).decision("did:a0"), "blocked");
+
+        // ...but not when the action failed: show the failure instead
+        let mut b = authored(2);
+        let req = act_req(&b.on_key(key(KeyCode::Char('b')), now));
+        b.on_key(key(KeyCode::Char('q')), now);
+        let mut msg = ok_msg(&req, "");
+        msg.err = Some("down".into());
+        let eff = b.on_msg(Msg::Act(Box::new(msg)), now);
+        assert!(!eff.contains(&Effect::Quit) && !b.quitting);
+        assert_eq!(b.err.as_deref(), Some("down"));
+
+        // ...and not when saving failed (the decision must not be lost)
+        let mut c = authored(2);
+        let tmp = break_saves(&c);
+        let req = act_req(&c.on_key(key(KeyCode::Char('b')), now));
+        c.on_key(key(KeyCode::Char('q')), now);
+        let eff = c.on_msg(Msg::Act(Box::new(ok_msg(&req, "at://r"))), now);
+        assert!(!eff.contains(&Effect::Quit) && c.pending.is_some() && !c.quitting);
+        std::fs::remove_dir(&tmp).unwrap();
+    }
+
+    #[test]
+    fn audit_for_a_loaded_profile_includes_counts() {
+        let mut a = authored(2);
+        let p = Profile {
+            did: "did:a0".into(),
+            posts_count: 7,
+            followers_count: 8,
+            follows_count: 9,
+            ..Default::default()
+        };
+        a.profiles
+            .insert("did:a0".into(), ProfileSlot::Loaded(Box::new(p)));
+        let now = Now::current();
+        let req = act_req(&a.on_key(key(KeyCode::Char('k')), now));
+        let eff = a.on_msg(Msg::Act(Box::new(ok_msg(&req, ""))), now);
+        let s = audits(&eff)[0].snapshot.clone().unwrap();
+        assert_eq!(
+            (s.posts, s.followers, s.following),
+            (Some(7), Some(8), Some(9))
+        );
+    }
+
+    #[test]
+    fn decisions_show_as_tags_immediately() {
+        let mut a = authored(2);
+        let now = Now::current();
+        let req = act_req(&a.on_key(key(KeyCode::Char('k')), now));
+        a.on_msg(Msg::Act(Box::new(ok_msg(&req, ""))), now);
+        let th = a.theme.clone();
+        assert_eq!(a.decision_tag("did:a0", &th).map(|t| t.0), Some("kept"));
+        assert_eq!(a.decision_tag("did:a1", &th), None);
+    }
+
+    // ---------------------------------------------------------------- follows browser
+
+    fn follow_page(n: usize, cursor: &str) -> Msg {
+        let accounts = (0..n)
+            .map(|i| Profile {
+                did: format!("did:f{i}"),
+                handle: format!("f{i}.test"),
+                ..Default::default()
+            })
+            .collect();
+        Msg::FollowsPage {
+            req: 0,
+            result: Ok((accounts, cursor.into())),
+        }
+    }
+
+    fn open_browser(a: &mut FeedApp, now: Now) -> u64 {
+        let eff = a.on_key(key(KeyCode::Char('F')), now);
+        let [Effect::LoadFollows { req, actor, cursor }] = &eff[..] else {
+            panic!("{eff:?}")
+        };
+        assert_eq!((actor.as_str(), cursor.as_str()), ("did:a0", ""));
+        *req
+    }
+
+    fn deliver(a: &mut FeedApp, req: u64, msg: Msg, now: Now) -> Vec<Effect> {
+        let Msg::FollowsPage { result, .. } = msg else {
+            panic!()
+        };
+        a.on_msg(Msg::FollowsPage { req, result }, now)
+    }
+
+    #[test]
+    fn follows_browser_pages_in_on_demand_and_opens_profiles() {
+        let mut a = authored(2);
+        let now = Now::current();
+        let req = open_browser(&mut a, now);
+        assert!(a.follows.as_ref().unwrap().loading);
+        assert_eq!(
+            a.hint_items(),
+            ["↑ ↓ move", "enter open profile", "esc back"]
+        );
+        deliver(&mut a, req, follow_page(3, "more"), now);
+        let b = a.follows.as_ref().unwrap();
+        assert_eq!((b.accounts.len(), b.loaded, b.loading), (3, true, false));
+        assert!(
+            a.on_key(key(KeyCode::Down), now).is_empty(),
+            "not at the end yet"
+        );
+        // reaching the last account with more pages available loads the next one...
+        let eff = a.on_key(key(KeyCode::Down), now);
+        assert!(
+            matches!(&eff[..], [Effect::LoadFollows { cursor, .. }] if cursor == "more"),
+            "{eff:?}"
+        );
+        // ...but only once while that page is in flight
+        assert!(a.on_key(key(KeyCode::Down), now).is_empty());
+        deliver(&mut a, req, follow_page(2, ""), now);
+        assert_eq!(a.follows.as_ref().unwrap().accounts.len(), 5);
+        let eff = a.on_key(key(KeyCode::Enter), now);
+        let [
+            Effect::Open {
+                urls,
+                status,
+                err_prefix,
+            },
+        ] = &eff[..]
+        else {
+            panic!("{eff:?}")
+        };
+        assert_eq!(
+            (urls[0].as_str(), status.as_str(), *err_prefix),
+            (
+                "https://bsky.app/profile/did:f2",
+                "opened @f2.test's profile",
+                "open profile"
+            )
+        );
+    }
+
+    #[test]
+    fn follows_browser_keys_do_not_leak_and_q_only_closes_it() {
+        let mut a = authored(2);
+        let now = Now::current();
+        let req = open_browser(&mut a, now);
+        deliver(&mut a, req, follow_page(2, ""), now);
+        for k in [
+            KeyCode::Char('b'),
+            KeyCode::Char('k'),
+            KeyCode::Char('U'),
+            KeyCode::Char('o'),
+        ] {
+            assert!(!matches!(
+                a.on_key(key(k), now).as_slice(),
+                [Effect::Act(_)]
+            ));
+        }
+        assert!(
+            a.state.entries.is_empty() && !a.busy,
+            "no decisions from inside the browser"
+        );
+        assert!(a.on_key(key(KeyCode::Char('q')), now).is_empty());
+        assert!(
+            a.follows.is_none(),
+            "q closes the browser instead of quitting"
+        );
+        open_browser(&mut a, now);
+        assert_eq!(
+            a.on_key(
+                KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+                now
+            ),
+            [Effect::Quit]
+        );
+    }
+
+    #[test]
+    fn follows_browser_errors_retry_and_stale_pages_are_ignored() {
+        let mut a = authored(2);
+        let now = Now::current();
+        let req = open_browser(&mut a, now);
+        a.on_msg(
+            Msg::FollowsPage {
+                req,
+                result: Err("boom".into()),
+            },
+            now,
+        );
+        assert_eq!(a.err.as_deref(), Some("load following: boom"));
+        assert_eq!(a.hint_items(), ["R retry", "esc back"]);
+        let eff = a.on_key(key(KeyCode::Char('R')), now);
+        assert!(
+            matches!(&eff[..], [Effect::LoadFollows { .. }]),
+            "R retries"
+        );
+        deliver(&mut a, req, follow_page(1, ""), now);
+        assert!(a.err.is_none() && a.follows.as_ref().unwrap().loaded);
+        assert!(
+            a.on_key(key(KeyCode::Char('R')), now).is_empty(),
+            "nothing more to load"
+        );
+        // a page for a browser that was closed and reopened is ignored
+        a.on_key(key(KeyCode::Esc), now);
+        let req2 = open_browser(&mut a, now);
+        assert_ne!(req, req2);
+        deliver(&mut a, req, follow_page(9, ""), now);
+        assert!(
+            a.follows.as_ref().unwrap().accounts.is_empty(),
+            "stale result dropped"
         );
     }
 }

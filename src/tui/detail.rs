@@ -271,7 +271,7 @@ impl FeedApp {
 
     fn decision_badge(&self, did: &str) -> Option<PLine> {
         let th = &self.theme;
-        let (text, style) = match self.decisions.get(did).map(String::as_str)? {
+        let (text, style) = match Some(self.state.decision(did)).filter(|d| !d.is_empty())? {
             store::BLOCKED => ("● blocked", th.err_style()),
             store::FOLLOWED => ("● followed", th.ok_style()),
             store::KEPT => ("● kept", th.ok_style()),

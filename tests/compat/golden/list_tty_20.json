@@ -2,6 +2,10 @@
  "files": {
   "state.json": "{\"entries\": {\"did:d\": {\"handle\": \"d.test\", \"decision\": \"kept\", \"at\": \"2024-05-01T10:00:00Z\"}, \"did:e\": {\"handle\": \"e.test\", \"decision\": \"skipped\", \"at\": \"2024-05-01T10:00:00.123456789+02:00\"}}}"
  },
+ "modes": {
+  "home/": "0o755",
+  "state.json": "0o644"
+ },
  "status": 0,
  "stderr": "",
  "stdout": "a.test            \u2026\ng.test            \u2026\nh.test            \u2026\ni.test            \u2026\nj.test            \u2026\nk.test            \u2026\n",

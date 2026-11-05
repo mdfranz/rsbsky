@@ -1,5 +1,6 @@
 //! Terminal UI: themes, the Following feed view and its runtime.
 
+pub mod actions;
 pub mod detail;
 pub mod feed;
 pub mod links;
@@ -23,18 +24,13 @@ pub struct FeedOptions {
 
 /// Shows your Following timeline until the user quits.
 pub async fn run_feed(app: App, opts: FeedOptions) -> std::io::Result<()> {
-    let mut feed = FeedApp::new(
+    let feed = FeedApp::new(
         theme::active(opts.theme),
         opts.refresh,
         opts.fancy,
         &app.client.did,
         &app.client.handle,
+        app.state,
     );
-    feed.decisions = app
-        .state
-        .entries
-        .iter()
-        .map(|(d, e)| (d.clone(), e.decision.clone()))
-        .collect();
     runtime::run(feed, app.client, app.audit).await
 }

@@ -1,5 +1,8 @@
 {
  "files": {},
+ "modes": {
+  "home/": "0o755"
+ },
  "status": 1,
  "stderr": "error: login: invalid character 'o' in literal null (expecting 'u')\n",
  "stdout": "",

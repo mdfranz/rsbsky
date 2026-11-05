@@ -23,6 +23,22 @@ pub struct RepostCtx {
 }
 
 impl App {
+    /// Followers (newest first) you don't follow back and have no recorded decision for;
+    /// plus skipped ones when `backlog`, or every follower when `all`. `since > 0` limits it
+    /// to the newest N followers.
+    pub async fn followers(
+        &self,
+        since: i64,
+        all: bool,
+        backlog: bool,
+    ) -> Result<Vec<Profile>, Error> {
+        let fs = self.client.get_followers(since).await?;
+        if all {
+            return Ok(fs);
+        }
+        Ok(fs.into_iter().filter(|f| self.is_new(f, backlog)).collect())
+    }
+
     /// Whether `p` is someone you don't follow, haven't blocked, and have no recorded
     /// decision for (skipped ones count when `backlog` is true).
     pub fn is_new(&self, p: &Profile, backlog: bool) -> bool {
@@ -70,9 +86,37 @@ impl App {
     }
 }
 
-/// Whether a decision leaves a record on your account.
+/// Whether a decision leaves a record on your account (so that changing it later means
+/// deleting that record).
 pub fn is_remote(decision: &str) -> bool {
     decision == store::BLOCKED || decision == store::FOLLOWED
+}
+
+/// Performs the remote side of a block or follow decision; returns the new record's URI.
+pub async fn create_for(c: &Client, decision: &str, did: &str) -> Result<String, Error> {
+    if decision == store::FOLLOWED {
+        c.follow(did).await
+    } else {
+        c.block(did).await
+    }
+}
+
+/// Undoes the remote side of a block or follow decision.
+pub async fn delete_for(c: &Client, decision: &str, uri: &str) -> Result<(), Error> {
+    if decision == store::FOLLOWED {
+        c.unfollow(uri).await
+    } else {
+        c.unblock(uri).await
+    }
+}
+
+/// The record behind `decision`, as the server reports it for `p`.
+pub fn viewer_uri<'a>(p: &'a Profile, decision: &str) -> &'a str {
+    if decision == store::FOLLOWED {
+        &p.viewer.following
+    } else {
+        &p.viewer.blocking
+    }
 }
 
 #[cfg(test)]

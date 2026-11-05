@@ -1,0 +1,13 @@
+{
+ "files": {
+  "audit.jsonl": "{\"action\":\"a\"}\n{oops\n"
+ },
+ "modes": {
+  "audit.jsonl": "0o644",
+  "home/": "0o755"
+ },
+ "status": 1,
+ "stderr": "error: {TMP}/audit.jsonl line 2: invalid character 'o' looking for beginning of object key string\n",
+ "stdout": "",
+ "trace": []
+}

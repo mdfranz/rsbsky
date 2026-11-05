@@ -1,6 +1,10 @@
 {
  "files": {
-  "state.json": "{\"x\":1,\"entries\":{\"did:a\":{\"decision\":\"kept\",\"zzz\":[1]}}}"
+  "state.json": "{\"x\": 1, \"entries\": {\"did:a\": {\"decision\": \"kept\", \"zzz\": [1]}}}"
+ },
+ "modes": {
+  "home/": "0o755",
+  "state.json": "0o644"
  },
  "status": 0,
  "stderr": "",

@@ -1,5 +1,8 @@
 {
  "files": {},
+ "modes": {
+  "home/": "0o755"
+ },
  "status": 1,
  "stderr": "error: login: com.atproto.server.createSession: HTTP 500\n",
  "stdout": "",

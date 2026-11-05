@@ -77,6 +77,9 @@ class FakePDS:
                 for r in pds.routes:
                     if r.get("method", "GET") != self.command or r["path"] != u.path:
                         continue
+                    jb = body if isinstance(body, dict) else {}
+                    if not all(jb.get(k) == v for k, v in r.get("jbody", {}).items()):
+                        continue
                     if all((k not in q) if want is None else (q.get(k) == [want]) for k, want in r.get("q", {}).items()):
                         if r.get("delay"):
                             time.sleep(r["delay"])
@@ -150,28 +153,104 @@ def run_case(case, binary, go_syntax=False):
             p = subprocess.run([binary] + args, env=env, cwd=tmp, input=(stdin or "").encode(),
                                capture_output=True, timeout=60, start_new_session=True)
             out, err = p.stdout, p.stderr
-        files = {}
-        for root, _, names in os.walk(tmp):
+        files, modes = {}, {}
+        for root, dirs, names in os.walk(tmp):
+            for d in dirs:
+                modes[os.path.relpath(os.path.join(root, d), tmp) + "/"] = oct(os.stat(os.path.join(root, d)).st_mode & 0o777)
             for n in names:
                 full = os.path.join(root, n)
                 rel = os.path.relpath(full, tmp)
+                modes[rel] = oct(os.stat(full).st_mode & 0o777)
                 with open(full, "rb") as f:
                     files[rel] = f.read().decode("utf-8", "replace").replace(tmp, "{TMP}")
         norm = lambda b: b.decode("utf-8", "replace").replace(pds.url, "{PDS}").replace(tmp, "{TMP}")
         return {"status": p.returncode, "stdout": norm(out), "stderr": norm(err), "trace": pds.trace,
-                "files": files}
+                "files": files, "modes": modes}
     finally:
         pds.close()
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+TS_KEYS = {"ts", "at", "createdAt"}
+RFC3339 = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$")
+
+
+def fresh_ts(s):
+    """True for a timestamp written by the program just now (as opposed to a fixture value)."""
+    if not (isinstance(s, str) and RFC3339.match(s)):
+        return False
+    try:
+        t = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return abs((datetime.now(timezone.utc) - t).total_seconds()) < 120
+
+
+def norm_json(v):
+    """Replace just-written timestamps by <NOW>; everything else must match exactly."""
+    if isinstance(v, dict):
+        return {k: ("<NOW>" if k in TS_KEYS and fresh_ts(x) else norm_json(x)) for k, x in v.items()}
+    if isinstance(v, list):
+        return [norm_json(x) for x in v]
+    return v
+
+
+def norm_file(name, text):
+    """state.json / audit.jsonl compare as parsed values (key order, indent, escaping are free)."""
+    try:
+        if name.endswith(".jsonl"):
+            return [norm_json(json.loads(l)) for l in text.splitlines() if l.strip()]
+        if name.endswith(".json"):
+            return norm_json(json.loads(text))
+    except ValueError:
+        pass
+    return text
+
+
+AGO_TS = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.000Z")
+
+
+def scrub(v):
+    """Fixture timestamps ({AGO:...}) embed the current second; their *age* is what matters."""
+    if isinstance(v, str):
+        return AGO_TS.sub("<AGO>", v)
+    if isinstance(v, list):
+        return [scrub(x) for x in v]
+    if isinstance(v, dict):
+        return {k: scrub(x) for k, x in v.items()}
+    return v
+
+
+def freeze(r):
+    """Golden files keep no wall-clock values: timestamps written 'just now' become <NOW>, so a
+    golden stays valid however long after it was captured it is compared."""
+    out = dict(r)
+    out["trace"] = [dict(x, body=norm_json(x["body"])) for x in r["trace"]]
+    files = {}
+    for name, text in r["files"].items():
+        v = norm_file(name, text)
+        files[name] = ("\n".join(json.dumps(e) for e in v) + "\n") if name.endswith(".jsonl") and isinstance(v, list) else (json.dumps(v) if name.endswith(".json") and not isinstance(v, str) else text)
+    out["files"] = files
+    return out
+
+
 def comparable(case, r):
+    return scrub(_comparable(case, r))
+
+
+def _comparable(case, r):
     """The parts of a result that must match, per the case's comparison mode."""
     mode = case.get("cmp", "exact")
     if mode == "status":  # message wording differs by design (clap vs Go flag package)
         return {"status": r["status"]}
-    out = {"status": r["status"], "stdout": r["stdout"], "stderr": r["stderr"], "trace": r["trace"],
-           "files": r["files"]}
+    out = {"status": r["status"], "stdout": r["stdout"], "stderr": r["stderr"],
+           "trace": [dict(x, body=norm_json(x["body"])) for x in r["trace"]],
+           "files": {k: norm_file(k, v) for k, v in r["files"].items()}, "modes": r.get("modes", {})}
+    if mode == "no_stderr":  # OS error wording differs (Go: "open x: is a directory", Rust: "Is a directory (os error 21)")
+        out.pop("stderr")
+        for name, v in out["files"].items():  # ...and so does the `error` recorded in the audit log
+            if name.endswith(".jsonl"):
+                out["files"][name] = [{k: x for k, x in e.items() if k != "error"} for e in v]
     if mode == "stderr_first_line":  # error text embeds Go/serde JSON wording
         out["stderr"] = r["stderr"].splitlines()[0].split(":")[0] if r["stderr"] else ""
     # stdout JSON Lines: compare parsed objects (key order/escaping are not part of the contract)
@@ -200,7 +279,7 @@ def main():
         if a.mode == "capture":
             r = run_case(c, a.go_bin, go_syntax=True)
             with open(gpath, "w") as f:
-                json.dump(r, f, indent=1, sort_keys=True)
+                json.dump(freeze(r), f, indent=1, sort_keys=True)
                 f.write("\n")
             ok += 1
             continue

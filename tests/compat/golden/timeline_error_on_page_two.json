@@ -1,5 +1,8 @@
 {
  "files": {},
+ "modes": {
+  "home/": "0o755"
+ },
  "status": 1,
  "stderr": "error: app.bsky.feed.getTimeline: bad gateway (UpstreamFailure)\n",
  "stdout": "",

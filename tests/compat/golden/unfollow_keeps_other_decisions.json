@@ -1,0 +1,51 @@
+{
+ "files": {
+  "audit.jsonl": "{\"ts\": \"<NOW>\", \"action\": \"unfollow\", \"did\": \"did:friend\", \"handle\": \"friend.test\", \"source\": \"cli\", \"record\": \"at://did:me/app.bsky.graph.follow/rkf\", \"prev\": \"kept\", \"ok\": true, \"snapshot\": {\"createdAt\": \"2025-10-01T02:05:24.000Z\", \"posts\": 10, \"followers\": 20, \"following\": 30, \"avatar\": true, \"bio\": \"Bio of friend\"}}\n",
+  "state.json": "{\"entries\": {\"did:friend\": {\"handle\": \"friend.test\", \"decision\": \"kept\", \"at\": \"2024-05-01T10:00:00Z\"}}}"
+ },
+ "modes": {
+  "audit.jsonl": "0o600",
+  "home/": "0o755",
+  "state.json": "0o644"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "unfollow @friend.test (did:friend)\n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.actor.getProfile",
+   "query": {
+    "actor": [
+     "friend"
+    ]
+   }
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": {
+    "collection": "app.bsky.graph.follow",
+    "repo": "did:me",
+    "rkey": "rkf"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.repo.deleteRecord",
+   "query": {}
+  }
+ ]
+}

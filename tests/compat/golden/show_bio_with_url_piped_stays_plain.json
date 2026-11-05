@@ -1,0 +1,52 @@
+{
+ "files": {},
+ "modes": {
+  "home/": "0o755"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "Linky (@linky.test)\nDID:       did:linky\nStatus:    new\nCreated:   2025-10-01T02:05:26.000Z (13mo)\nPosts:     10\nFollowers: 20\nFollowing: 30\nAvatar:    true\nURL:       https://bsky.app/profile/linky.test\n\nsee https://example.com/x. and example.org!\n\nRecent posts:\n  2h    first recent post\n  24h   [reply] reply\n  9d    [repost] reposted thing \u2197 Example Title https://example.com/a\n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.actor.getProfile",
+   "query": {
+    "actor": [
+     "linky"
+    ]
+   }
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.feed.getAuthorFeed",
+   "query": {
+    "actor": [
+     "did:linky"
+    ],
+    "filter": [
+     "posts_with_replies"
+    ],
+    "limit": [
+     "5"
+    ]
+   }
+  }
+ ]
+}

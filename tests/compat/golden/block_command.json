@@ -1,6 +1,10 @@
 {
  "files": {
-  "audit.jsonl": "{\"ts\":\"2026-11-05T01:06:07Z\",\"action\":\"block\",\"handle\":\"someone\",\"source\":\"cli\",\"ok\":false,\"error\":\"app.bsky.actor.getProfile: no scripted response (NoRoute)\"}\n"
+  "audit.jsonl": "{\"ts\": \"<NOW>\", \"action\": \"block\", \"handle\": \"someone\", \"source\": \"cli\", \"ok\": false, \"error\": \"app.bsky.actor.getProfile: no scripted response (NoRoute)\"}\n"
+ },
+ "modes": {
+  "audit.jsonl": "0o600",
+  "home/": "0o755"
  },
  "status": 1,
  "stderr": "someone: app.bsky.actor.getProfile: no scripted response (NoRoute)\nerror: 1 of 1 failed\n",

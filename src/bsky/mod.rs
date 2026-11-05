@@ -4,6 +4,7 @@ pub mod client;
 pub mod feed;
 pub mod post;
 pub mod profile;
+pub mod records;
 
 pub use client::{Client, Error};
 pub use feed::{FeedItem, PostRef, PostStats, Repost};
@@ -13,7 +14,7 @@ pub use profile::{Profile, Viewer};
 use serde::{Deserialize, Deserializer};
 
 /// Go's JSON decoding treats `null` like a missing field; so do we.
-pub(crate) fn nz<'de, D, T>(d: D) -> Result<T, D::Error>
+pub fn nz<'de, D, T>(d: D) -> Result<T, D::Error>
 where
     D: Deserializer<'de>,
     T: Deserialize<'de> + Default,

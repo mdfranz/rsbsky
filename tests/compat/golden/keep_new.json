@@ -1,0 +1,39 @@
+{
+ "files": {
+  "audit.jsonl": "{\"ts\": \"<NOW>\", \"action\": \"keep\", \"did\": \"did:newbie\", \"handle\": \"newbie.test\", \"source\": \"cli\", \"ok\": true, \"snapshot\": {\"createdAt\": \"2025-10-01T02:05:23.000Z\", \"posts\": 10, \"followers\": 20, \"following\": 30, \"avatar\": true, \"bio\": \"Bio of newbie\"}}\n",
+  "state.json": "{\"entries\": {\"did:newbie\": {\"handle\": \"newbie.test\", \"decision\": \"kept\", \"at\": \"<NOW>\"}}}"
+ },
+ "modes": {
+  "audit.jsonl": "0o600",
+  "home/": "0o755",
+  "state.json": "0o600"
+ },
+ "status": 0,
+ "stderr": "",
+ "stdout": "keep @newbie.test\n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.actor.getProfile",
+   "query": {
+    "actor": [
+     "newbie"
+    ]
+   }
+  }
+ ]
+}

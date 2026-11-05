@@ -1,0 +1,37 @@
+{
+ "files": {
+  "audit.jsonl": "{\"ts\": \"<NOW>\", \"action\": \"block\", \"handle\": \"evil\\u001b[31m\", \"source\": \"cli\", \"ok\": false, \"error\": \"app.bsky.actor.getProfile: no scripted response (NoRoute)\"}\n"
+ },
+ "modes": {
+  "audit.jsonl": "0o600",
+  "home/": "0o755"
+ },
+ "status": 1,
+ "stderr": "evil\u001b[31m: app.bsky.actor.getProfile: no scripted response (NoRoute)\nerror: 1 of 1 failed\n",
+ "stdout": "",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.actor.getProfile",
+   "query": {
+    "actor": [
+     "evil\u001b[31m"
+    ]
+   }
+  }
+ ]
+}

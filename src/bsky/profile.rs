@@ -92,6 +92,59 @@ impl Profile {
 }
 
 impl Client {
+    /// Followers of the logged-in account, newest first. `limit <= 0` means all of them.
+    pub async fn get_followers(&self, limit: i64) -> Result<Vec<Profile>, Error> {
+        #[derive(Deserialize, Default)]
+        #[serde(default)]
+        struct Out {
+            #[serde(deserialize_with = "nz")]
+            followers: Vec<Profile>,
+            #[serde(deserialize_with = "nz")]
+            cursor: String,
+        }
+        let mut all: Vec<Profile> = Vec::new();
+        let mut cursor = String::new();
+        loop {
+            let mut q = vec![("actor", self.did.clone()), ("limit", "100".to_string())];
+            if !cursor.is_empty() {
+                q.push(("cursor", cursor.clone()));
+            }
+            let out: Out = self.get("app.bsky.graph.getFollowers", &q).await?;
+            let empty = out.followers.is_empty();
+            all.extend(out.followers);
+            if out.cursor.is_empty() || empty || (limit > 0 && all.len() as i64 >= limit) {
+                break;
+            }
+            cursor = out.cursor;
+        }
+        if limit > 0 {
+            all.truncate(limit as usize);
+        }
+        Ok(all)
+    }
+
+    /// One page of the accounts `actor` follows, plus the next cursor ("" at the end).
+    pub async fn get_follows_page(
+        &self,
+        actor: &str,
+        cursor: &str,
+    ) -> Result<(Vec<Profile>, String), Error> {
+        #[derive(Deserialize, Default)]
+        #[serde(default)]
+        struct Out {
+            #[serde(deserialize_with = "nz")]
+            follows: Vec<Profile>,
+            #[serde(deserialize_with = "nz")]
+            cursor: String,
+        }
+        let mut q = vec![("actor", actor.to_string()), ("limit", "100".to_string())];
+        if !cursor.is_empty() {
+            q.push(("cursor", cursor.to_string()));
+        }
+        let out: Out = self.get("app.bsky.graph.getFollows", &q).await?;
+        Ok((out.follows, out.cursor))
+    }
+
     /// `actor` is a handle or DID.
     pub async fn get_profile(&self, actor: &str) -> Result<Profile, Error> {
         self.get("app.bsky.actor.getProfile", &[("actor", actor.to_string())])

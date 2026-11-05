@@ -1,0 +1,53 @@
+{
+ "files": {
+  "audit.jsonl": "{\"ts\": \"<NOW>\", \"action\": \"block\", \"did\": \"did:newbie\", \"handle\": \"newbie.test\", \"source\": \"cli\", \"ok\": false, \"error\": \"com.atproto.repo.createRecord: oops (InternalServerError)\", \"snapshot\": {\"createdAt\": \"2025-10-01T02:05:22.000Z\", \"posts\": 10, \"followers\": 20, \"following\": 30, \"avatar\": true, \"bio\": \"Bio of newbie\"}}\n"
+ },
+ "modes": {
+  "audit.jsonl": "0o600",
+  "home/": "0o755"
+ },
+ "status": 1,
+ "stderr": "newbie: com.atproto.repo.createRecord: oops (InternalServerError)\nerror: 1 of 1 failed\n",
+ "stdout": "block @newbie.test (did:newbie)\n",
+ "trace": [
+  {
+   "auth": null,
+   "body": {
+    "identifier": "me.test",
+    "password": "pw"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.server.createSession",
+   "query": {}
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": null,
+   "ctype": null,
+   "method": "GET",
+   "path": "/xrpc/app.bsky.actor.getProfile",
+   "query": {
+    "actor": [
+     "newbie"
+    ]
+   }
+  },
+  {
+   "auth": "Bearer TOKEN",
+   "body": {
+    "collection": "app.bsky.graph.block",
+    "record": {
+     "$type": "app.bsky.graph.block",
+     "createdAt": "<NOW>",
+     "subject": "did:newbie"
+    },
+    "repo": "did:me"
+   },
+   "ctype": "application/json",
+   "method": "POST",
+   "path": "/xrpc/com.atproto.repo.createRecord",
+   "query": {}
+  }
+ ]
+}
