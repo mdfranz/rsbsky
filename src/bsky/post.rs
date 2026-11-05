@@ -8,7 +8,7 @@ use super::profile::Profile;
 use crate::termtext::{IMAGE_MARK, VIDEO_MARK, collapse_ws};
 
 /// A post (or repost) in an account's feed.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Post {
     pub text: String,
     pub created_at: String,

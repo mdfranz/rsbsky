@@ -1,10 +1,12 @@
 //! Local files written by bskyban: `state.json` (decisions) and `audit.jsonl`.
 //! The formats are shared with the Go tool.
 
+pub mod audit;
 pub mod state;
 
 use std::path::{Path, PathBuf};
 
+pub use audit::{Audit, AuditEvent, Snapshot};
 pub use state::{Entry, State};
 
 pub const BLOCKED: &str = "blocked";

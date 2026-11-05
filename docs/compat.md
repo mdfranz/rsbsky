@@ -39,11 +39,30 @@ python3 scripts/compat.py diff    --go-bin ./bskyban --bin target/debug/rsbsky  
 |---|---|
 | 0 Scaffold, CLI/env, paths, theme-name validation | done; every dispatch/validation path in the matrix passes |
 | 1 Client, state reading, `feed --list [--json]` | done; matrix + wiremock tests pass, no mutations or state writes |
-| 2 Feed TUI, `themes`, refresh, audit writer | not started |
+| 2 Feed TUI (Following), `themes`, refresh, audit writer | done; see "Phase 2 notes" |
+
+## Phase 2 notes
+Implemented: `rsbsky` / `rsbsky feed` Following view (list with up to 3 text lines, quote, repost/reply tags,
+age as an OSC 8 link, key-hint bar, load-more near the end), keys `↑ ↓ PgUp PgDn Home End R q Ctrl+C`,
+background refresh (`--refresh`, up to 4 pages, overlap/gap logic, hold with `(+N new)`), `--fancy` /
+`BSKYBAN_FANCY`, `--theme` / `BSKYBAN_THEME` / `NO_COLOR`, `themes`, and the audit writer for refresh failures.
+
+- **Hyperlinks:** link targets stay out of ratatui's cell buffer; a post-draw pass (`src/tui/links.rs`) re-prints
+  the link cells wrapped in OSC 8 every frame and re-prints cells that stopped being links as plain text.
+  Off when `TERM` is `dumb` or `linux`.
+- **No terminal queries:** startup never sends `ESC[6n`; a terminal that does not answer cannot stall it.
+- **Differences from Go:** the feed has no Reposts tab yet (Phase 5) so the title row shows only `Following`;
+  the hint bar lists only keys that work today; adaptive colours guess the background from `COLORFGBG`
+  (default dark) instead of asking the terminal; a failed manual `R` clears the "checking…" status;
+  without a terminal `feed` exits 1 after login with its own wording (Go: "could not open a new TTY").
+- **Checks:** unit tests (state machine, layout snapshots, link bytes), wiremock tests for the check loop,
+  `scripts/tui_check.py` (tmux + raw pty: restore after quit/Ctrl+C/SIGTERM/panic/slow HTTP, resize,
+  NO_COLOR, refresh insert/hold/`R`, audit lines read back by Go's `log`). Run the slow suite with
+  `cargo test -- --ignored`.
 
 ## Temporary stubs (exit 1, `error: <cmd>: not yet implemented in rsbsky (planned: phase N)`)
 Credentials, state loading and login run first, as in Go, so these fail after a successful login.
-`feed`/`--json` TUI (2), `themes` (2, credential-free), `review` (5), `posts` incl. `--list/--json` (6),
-`log` (4, credential-free), `list`, `baseline`, `show`, `block|unblock|follow|unfollow|keep` (4),
-`post|delete-post|like|unlike` (6). Deferred matrix cases: `log_empty`, `themes_preview`,
-`feed_tui_stub`, `list_json_without_list_is_tui`, `block_command`.
+`review` (5), `posts` incl. `--list/--json` (6), `log` (4, credential-free), `list`, `baseline`, `show`,
+`block|unblock|follow|unfollow|keep` (4), `post|delete-post|like|unlike` (6). Detail view, link picker,
+`o`/`i` openers (3) and all moderation keys (4) are not bound yet. Deferred matrix cases: `log_empty`,
+`block_command`, `themes_preview_tty`.

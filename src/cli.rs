@@ -15,7 +15,7 @@ use crate::app::App;
 use crate::bsky::{self, Client, Post};
 use crate::store::{self, State};
 use crate::termtext::{collapse_ws, human_age, sanitize, truncate_width};
-use crate::tui::theme;
+use crate::tui::{self, theme};
 
 /// Shortest allowed interval between background checks.
 pub const MIN_REFRESH: Duration = Duration::from_secs(10);
@@ -300,7 +300,10 @@ pub async fn run(cli: Cli, out: &mut dyn Write) -> Result<(), CliError> {
     // Commands that never log in.
     match &cmd {
         Cmd::Log(_) => return Err(not_implemented("log", 4)),
-        Cmd::Themes => return Err(not_implemented("themes", 2)),
+        Cmd::Themes => {
+            let ansi = std::io::stdout().is_terminal();
+            return theme::print_themes(out, ansi).map_err(|e| CliError::Failure(e.to_string()));
+        }
         _ => {}
     }
 
@@ -328,7 +331,7 @@ pub async fn run(cli: Cli, out: &mut dyn Write) -> Result<(), CliError> {
     };
     // The audit path is resolved now (and can fail) exactly as in bskyban, even though
     // audit writing arrives in Phase 2.
-    let _audit_path = match env("BSKYBAN_AUDIT") {
+    let audit_path = match env("BSKYBAN_AUDIT") {
         p if p.is_empty() => store::default_audit_path().map_err(CliError::Failure)?,
         p => PathBuf::from(p),
     };
@@ -338,7 +341,11 @@ pub async fn run(cli: Cli, out: &mut dyn Write) -> Result<(), CliError> {
         .login(&handle, &password)
         .await
         .map_err(|e| CliError::Failure(format!("login: {e}")))?;
-    let app = App { client, state };
+    let app = App {
+        client,
+        state,
+        audit: store::Audit::new(audit_path),
+    };
 
     match &cmd {
         Cmd::Feed(a) if a.list => {
@@ -346,7 +353,23 @@ pub async fn run(cli: Cli, out: &mut dyn Write) -> Result<(), CliError> {
             feed_list(&app, a.pages as usize, a.backlog, a.json, out, tw).await?;
             Ok(())
         }
-        Cmd::Feed(_) => Err(not_implemented("feed (TUI)", 2)),
+        Cmd::Feed(a) => {
+            if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
+                return Err(CliError::Failure(
+                    "the feed view needs a terminal (use --list for plain output)".into(),
+                ));
+            }
+            let name = theme::resolve(a.theme.as_deref(), &env("BSKYBAN_THEME"))
+                .map_err(|e| CliError::Usage(e.to_string()))?;
+            let opts = tui::FeedOptions {
+                theme: name,
+                refresh: a.refresh,
+                fancy: a.fancy || env_on("BSKYBAN_FANCY"),
+            };
+            tui::run_feed(app, opts)
+                .await
+                .map_err(|e| CliError::Failure(e.to_string()))
+        }
         Cmd::Posts(_) => Err(not_implemented("posts", 6)),
         Cmd::Review(_) => Err(not_implemented("review", 5)),
         Cmd::List(_) => Err(not_implemented("list", 4)),
@@ -384,15 +407,6 @@ struct JsonLine<'a> {
     text: &'a str,
 }
 
-/// Go's `json.Encoder` escapes these characters even though JSON does not require it.
-fn go_escape_json(s: String) -> String {
-    s.replace('<', "\\u003c")
-        .replace('>', "\\u003e")
-        .replace('&', "\\u0026")
-        .replace('\u{2028}', "\\u2028")
-        .replace('\u{2029}', "\\u2029")
-}
-
 /// Prints the repost authors the Reposts tab would offer (`feed --list`).
 pub async fn feed_list(
     app: &App,
@@ -414,7 +428,7 @@ pub async fn feed_list(
                 text: &r.post.text,
             };
             if let Ok(s) = serde_json::to_string(&line) {
-                let _ = writeln!(out, "{}", go_escape_json(s));
+                let _ = writeln!(out, "{}", store::audit::go_json(s));
             }
             continue;
         }
@@ -524,7 +538,7 @@ mod tests {
     #[test]
     fn json_escapes_like_go() {
         assert_eq!(
-            go_escape_json("[\"<&>\"]".into()),
+            store::audit::go_json("[\"<&>\"]".into()),
             "[\"\\u003c\\u0026\\u003e\"]"
         );
     }

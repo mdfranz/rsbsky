@@ -184,3 +184,181 @@ async fn profile_text_is_sanitized_and_viewer_parsed() {
         ("at://f", "")
     );
 }
+
+// ---------------------------------------------------------------- background check (Phase 2)
+
+use rsbsky::tui::runtime::run_check;
+use std::collections::HashSet;
+
+fn original(rkey: &str) -> serde_json::Value {
+    json!({"post":{"uri":format!("at://did:x/app.bsky.feed.post/{rkey}"),"cid":"c",
+        "author":{"did":"did:x","handle":"x.test"},"record":{"text":"t","createdAt":"2024-01-01T00:00:00Z"}}})
+}
+
+fn key(rkey: &str, by: &str) -> String {
+    format!("at://did:x/app.bsky.feed.post/{rkey}|{by}")
+}
+
+async fn timeline_page(
+    server: &MockServer,
+    cursor: Option<&str>,
+    feed: Vec<serde_json::Value>,
+    next: Option<&str>,
+) {
+    let mut body = json!({ "feed": feed });
+    if let Some(n) = next {
+        body["cursor"] = json!(n);
+    }
+    let m = Mock::given(method("GET"))
+        .and(path("/xrpc/app.bsky.feed.getTimeline"))
+        .and(query_param("limit", "50"));
+    let m = match cursor {
+        Some(c) => m.and(query_param("cursor", c)),
+        None => m.and(query_param_is_missing("cursor")),
+    };
+    m.respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .mount(server)
+        .await;
+}
+
+fn timeline_requests(reqs: &[wiremock::Request]) -> Vec<Option<String>> {
+    reqs.iter()
+        .filter(|r| r.url.path().ends_with("getTimeline"))
+        .map(|r| {
+            r.url
+                .query_pairs()
+                .find(|(k, _)| k == "cursor")
+                .map(|(_, v)| v.into_owned())
+        })
+        .collect()
+}
+
+#[tokio::test]
+async fn check_stops_at_the_page_that_overlaps_known_posts() {
+    let server = MockServer::start().await;
+    let c = logged_in(&server).await;
+    timeline_page(
+        &server,
+        None,
+        vec![original("n2"), original("n1"), original("known")],
+        Some("c2"),
+    )
+    .await;
+    let known: HashSet<String> = [key("known", "")].into();
+    let out = run_check(&c, &known).await.unwrap();
+    let rkeys: Vec<_> = out
+        .items
+        .iter()
+        .map(|i| i.uri.rsplit('/').next().unwrap().to_string())
+        .collect();
+    assert_eq!(rkeys, ["n2", "n1"], "newest first, known post excluded");
+    assert!(!out.gap);
+    assert_eq!(
+        timeline_requests(&server.received_requests().await.unwrap()),
+        [None],
+        "one page was enough"
+    );
+}
+
+#[tokio::test]
+async fn check_reports_a_gap_after_four_pages_without_overlap() {
+    let server = MockServer::start().await;
+    let c = logged_in(&server).await;
+    for (i, cur) in [None, Some("c2"), Some("c3"), Some("c4")]
+        .into_iter()
+        .enumerate()
+    {
+        let next = format!("c{}", i + 2);
+        timeline_page(
+            &server,
+            cur,
+            vec![original(&format!("a{i}")), original(&format!("b{i}"))],
+            Some(&next),
+        )
+        .await;
+    }
+    let out = run_check(&c, &HashSet::new()).await.unwrap();
+    assert!(out.gap);
+    assert_eq!(out.items.len(), 8);
+    assert_eq!(
+        timeline_requests(&server.received_requests().await.unwrap()),
+        [
+            None,
+            Some("c2".into()),
+            Some("c3".into()),
+            Some("c4".into())
+        ],
+        "exactly four pages, following the cursor"
+    );
+}
+
+#[tokio::test]
+async fn check_stops_when_the_cursor_ends_and_dedupes_across_pages() {
+    let server = MockServer::start().await;
+    let c = logged_in(&server).await;
+    timeline_page(
+        &server,
+        None,
+        vec![original("a"), original("dup")],
+        Some("c2"),
+    )
+    .await;
+    timeline_page(
+        &server,
+        Some("c2"),
+        vec![original("dup"), original("b")],
+        None,
+    )
+    .await;
+    let out = run_check(&c, &HashSet::new()).await.unwrap();
+    assert!(!out.gap);
+    assert_eq!(out.items.len(), 3);
+}
+
+#[tokio::test]
+async fn check_identity_is_uri_plus_reposter() {
+    let server = MockServer::start().await;
+    let c = logged_in(&server).await;
+    timeline_page(
+        &server,
+        None,
+        vec![
+            repost("r1.test", "p"),
+            repost("r2.test", "p"),
+            original("p"),
+        ],
+        None,
+    )
+    .await;
+    let known: HashSet<String> = [key("p", "r1.test")].into();
+    let out = run_check(&c, &known).await.unwrap();
+    let by: Vec<_> = out.items.iter().map(|i| i.by.as_str()).collect();
+    assert_eq!(
+        by,
+        ["r2.test", ""],
+        "the same post from another reposter is a separate entry"
+    );
+}
+
+#[tokio::test]
+async fn check_failure_is_reported_with_the_api_error() {
+    let server = MockServer::start().await;
+    let c = logged_in(&server).await;
+    timeline_page(&server, None, vec![original("a")], Some("c2")).await;
+    Mock::given(method("GET"))
+        .and(query_param("cursor", "c2"))
+        .respond_with(
+            ResponseTemplate::new(500)
+                .set_body_json(json!({"error":"InternalServerError","message":"oops"})),
+        )
+        .mount(&server)
+        .await;
+    let err = run_check(&c, &HashSet::new()).await.unwrap_err();
+    assert_eq!(err, "app.bsky.feed.getTimeline: oops (InternalServerError)");
+    for r in server.received_requests().await.unwrap() {
+        assert!(
+            r.method.as_str() == "GET" || r.url.path().ends_with("createSession"),
+            "a check never mutates"
+        );
+    }
+}

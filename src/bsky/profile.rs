@@ -5,7 +5,7 @@ use super::client::{Client, Error};
 use super::nz;
 use crate::termtext::sanitize;
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct Viewer {
     #[serde(deserialize_with = "nz")]
@@ -45,7 +45,7 @@ struct RawProfile {
 
 /// The subset of `app.bsky.actor.defs#profileView(Detailed)` we use.
 /// Text fields are sanitized when parsed, as in Go.
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[serde(from = "RawProfile")]
 pub struct Profile {
     pub did: String,

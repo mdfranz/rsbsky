@@ -1,0 +1,3887 @@
+[
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "one two",
+   "three",
+   "four",
+   "five six",
+   "seven",
+   "eight",
+   "nine ten",
+   "eleven",
+   "twelve"
+  ],
+  "clip": [
+   "one …"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "one two",
+   "three",
+   "four",
+   "five six",
+   "seven",
+   "eight",
+   "nine ten",
+   "eleven",
+   "twelve"
+  ],
+  "clip": [
+   "one two",
+   "thre…"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "one two",
+   "three",
+   "four",
+   "five six",
+   "seven",
+   "eight",
+   "nine ten",
+   "eleven",
+   "twelve"
+  ],
+  "clip": [
+   "one two",
+   "three",
+   "four…"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "one two",
+   "three",
+   "four",
+   "five six",
+   "seven",
+   "eight",
+   "nine ten",
+   "eleven",
+   "twelve"
+  ],
+  "clip": [
+   "one two…"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "one two",
+   "three",
+   "four",
+   "five six",
+   "seven",
+   "eight",
+   "nine ten",
+   "eleven",
+   "twelve"
+  ],
+  "clip": [
+   "one two",
+   "three …"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "one two",
+   "three",
+   "four",
+   "five six",
+   "seven",
+   "eight",
+   "nine ten",
+   "eleven",
+   "twelve"
+  ],
+  "clip": [
+   "one two",
+   "three",
+   "four …"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "one two",
+   "three four",
+   "five six",
+   "seven",
+   "eight nine",
+   "ten eleven",
+   "twelve"
+  ],
+  "clip": [
+   "one two …"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "one two",
+   "three four",
+   "five six",
+   "seven",
+   "eight nine",
+   "ten eleven",
+   "twelve"
+  ],
+  "clip": [
+   "one two",
+   "three fou…"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "one two",
+   "three four",
+   "five six",
+   "seven",
+   "eight nine",
+   "ten eleven",
+   "twelve"
+  ],
+  "clip": [
+   "one two",
+   "three four",
+   "five six …"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "one two three",
+   "four five six",
+   "seven eight nine",
+   "ten eleven twelve"
+  ],
+  "clip": [
+   "one two three …"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "one two three",
+   "four five six",
+   "seven eight nine",
+   "ten eleven twelve"
+  ],
+  "clip": [
+   "one two three",
+   "four five six …"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "one two three",
+   "four five six",
+   "seven eight nine",
+   "ten eleven twelve"
+  ],
+  "clip": [
+   "one two three",
+   "four five six",
+   "seven eight nine…"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "one two three four five six seven eight",
+   "nine ten eleven twelve"
+  ],
+  "clip": [
+   "one two three four five six seven eight…"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "one two three four five six seven eight",
+   "nine ten eleven twelve"
+  ],
+  "clip": [
+   "one two three four five six seven eight",
+   "nine ten eleven twelve"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "one two three four five six seven eight",
+   "nine ten eleven twelve"
+  ],
+  "clip": [
+   "one two three four five six seven eight",
+   "nine ten eleven twelve"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "one two three four five six seven eight nine ten eleven twelve"
+  ],
+  "clip": [
+   "one two three four five six seven eight nine ten eleven twelve"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "one two three four five six seven eight nine ten eleven twelve"
+  ],
+  "clip": [
+   "one two three four five six seven eight nine ten eleven twelve"
+  ]
+ },
+ {
+  "text": "one two three four five six seven eight nine ten eleven twelve",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "one two three four five six seven eight nine ten eleven twelve"
+  ],
+  "clip": [
+   "one two three four five six seven eight nine ten eleven twelve"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "abcdefgh",
+   "ijklmnop",
+   "qrstuvwx",
+   "yz012345",
+   "6789"
+  ],
+  "clip": [
+   "abcd…"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "abcdefgh",
+   "ijklmnop",
+   "qrstuvwx",
+   "yz012345",
+   "6789"
+  ],
+  "clip": [
+   "abcdefgh",
+   "ijkl…"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "abcdefgh",
+   "ijklmnop",
+   "qrstuvwx",
+   "yz012345",
+   "6789"
+  ],
+  "clip": [
+   "abcdefgh",
+   "ijklmnop",
+   "qrst…"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "abcdefgh",
+   "ijklmnop",
+   "qrstuvwx",
+   "yz012345",
+   "6789"
+  ],
+  "clip": [
+   "abcdefg…"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "abcdefgh",
+   "ijklmnop",
+   "qrstuvwx",
+   "yz012345",
+   "6789"
+  ],
+  "clip": [
+   "abcdefgh",
+   "ijklmno…"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "abcdefgh",
+   "ijklmnop",
+   "qrstuvwx",
+   "yz012345",
+   "6789"
+  ],
+  "clip": [
+   "abcdefgh",
+   "ijklmnop",
+   "qrstuvw…"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "abcdefghij",
+   "klmnopqrst",
+   "uvwxyz0123",
+   "456789"
+  ],
+  "clip": [
+   "abcdefghi…"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "abcdefghij",
+   "klmnopqrst",
+   "uvwxyz0123",
+   "456789"
+  ],
+  "clip": [
+   "abcdefghij",
+   "klmnopqrs…"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "abcdefghij",
+   "klmnopqrst",
+   "uvwxyz0123",
+   "456789"
+  ],
+  "clip": [
+   "abcdefghij",
+   "klmnopqrst",
+   "uvwxyz012…"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "abcdefghijklmnopq",
+   "rstuvwxyz01234567",
+   "89"
+  ],
+  "clip": [
+   "abcdefghijklmnop…"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "abcdefghijklmnopq",
+   "rstuvwxyz01234567",
+   "89"
+  ],
+  "clip": [
+   "abcdefghijklmnopq",
+   "rstuvwxyz0123456…"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "abcdefghijklmnopq",
+   "rstuvwxyz01234567",
+   "89"
+  ],
+  "clip": [
+   "abcdefghijklmnopq",
+   "rstuvwxyz01234567",
+   "89"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "abcdefghijklmnopqrstuvwxyz0123456789"
+  ],
+  "clip": [
+   "abcdefghijklmnopqrstuvwxyz0123456789"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "abcdefghijklmnopqrstuvwxyz0123456789"
+  ],
+  "clip": [
+   "abcdefghijklmnopqrstuvwxyz0123456789"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "abcdefghijklmnopqrstuvwxyz0123456789"
+  ],
+  "clip": [
+   "abcdefghijklmnopqrstuvwxyz0123456789"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "abcdefghijklmnopqrstuvwxyz0123456789"
+  ],
+  "clip": [
+   "abcdefghijklmnopqrstuvwxyz0123456789"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "abcdefghijklmnopqrstuvwxyz0123456789"
+  ],
+  "clip": [
+   "abcdefghijklmnopqrstuvwxyz0123456789"
+  ]
+ },
+ {
+  "text": "abcdefghijklmnopqrstuvwxyz0123456789",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "abcdefghijklmnopqrstuvwxyz0123456789"
+  ],
+  "clip": [
+   "abcdefghijklmnopqrstuvwxyz0123456789"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "line one",
+   "",
+   "line",
+   "three",
+   "after",
+   "blank"
+  ],
+  "clip": [
+   "line…"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "line one",
+   "",
+   "line",
+   "three",
+   "after",
+   "blank"
+  ],
+  "clip": [
+   "line one",
+   " …"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "line one",
+   "",
+   "line",
+   "three",
+   "after",
+   "blank"
+  ],
+  "clip": [
+   "line one",
+   "",
+   "line…"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "line one",
+   "",
+   "line",
+   "three",
+   "after",
+   "blank"
+  ],
+  "clip": [
+   "line on…"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "line one",
+   "",
+   "line",
+   "three",
+   "after",
+   "blank"
+  ],
+  "clip": [
+   "line one",
+   " …"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "line one",
+   "",
+   "line",
+   "three",
+   "after",
+   "blank"
+  ],
+  "clip": [
+   "line one",
+   "",
+   "line …"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "line one",
+   "",
+   "line three",
+   "after",
+   "blank"
+  ],
+  "clip": [
+   "line one …"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "line one",
+   "",
+   "line three",
+   "after",
+   "blank"
+  ],
+  "clip": [
+   "line one",
+   " …"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "line one",
+   "",
+   "line three",
+   "after",
+   "blank"
+  ],
+  "clip": [
+   "line one",
+   "",
+   "line thre…"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "line one",
+   "",
+   "line three after",
+   "blank"
+  ],
+  "clip": [
+   "line one …"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "line one",
+   "",
+   "line three after",
+   "blank"
+  ],
+  "clip": [
+   "line one",
+   " …"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "line one",
+   "",
+   "line three after",
+   "blank"
+  ],
+  "clip": [
+   "line one",
+   "",
+   "line three after…"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "line one",
+   "",
+   "line three after blank"
+  ],
+  "clip": [
+   "line one …"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "line one",
+   "",
+   "line three after blank"
+  ],
+  "clip": [
+   "line one",
+   " …"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "line one",
+   "",
+   "line three after blank"
+  ],
+  "clip": [
+   "line one",
+   "",
+   "line three after blank"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "line one",
+   "",
+   "line three after blank"
+  ],
+  "clip": [
+   "line one …"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "line one",
+   "",
+   "line three after blank"
+  ],
+  "clip": [
+   "line one",
+   " …"
+  ]
+ },
+ {
+  "text": "line one\n\nline three after blank",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "line one",
+   "",
+   "line three after blank"
+  ],
+  "clip": [
+   "line one",
+   "",
+   "line three after blank"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "see",
+   "↗ https:",
+   "//exampl",
+   "e.com/a/",
+   "very/lon",
+   "g/path/t",
+   "hat/neve",
+   "r/ends?x",
+   "=1&y=2",
+   "now"
+  ],
+  "clip": [
+   "see …"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "see",
+   "↗ https:",
+   "//exampl",
+   "e.com/a/",
+   "very/lon",
+   "g/path/t",
+   "hat/neve",
+   "r/ends?x",
+   "=1&y=2",
+   "now"
+  ],
+  "clip": [
+   "see",
+   "↗ ht…"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "see",
+   "↗ https:",
+   "//exampl",
+   "e.com/a/",
+   "very/lon",
+   "g/path/t",
+   "hat/neve",
+   "r/ends?x",
+   "=1&y=2",
+   "now"
+  ],
+  "clip": [
+   "see",
+   "↗ https:",
+   "//ex…"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "see",
+   "↗ https:",
+   "//exampl",
+   "e.com/a/",
+   "very/lon",
+   "g/path/t",
+   "hat/neve",
+   "r/ends?x",
+   "=1&y=2",
+   "now"
+  ],
+  "clip": [
+   "see …"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "see",
+   "↗ https:",
+   "//exampl",
+   "e.com/a/",
+   "very/lon",
+   "g/path/t",
+   "hat/neve",
+   "r/ends?x",
+   "=1&y=2",
+   "now"
+  ],
+  "clip": [
+   "see",
+   "↗ https…"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "see",
+   "↗ https:",
+   "//exampl",
+   "e.com/a/",
+   "very/lon",
+   "g/path/t",
+   "hat/neve",
+   "r/ends?x",
+   "=1&y=2",
+   "now"
+  ],
+  "clip": [
+   "see",
+   "↗ https:",
+   "//examp…"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "see",
+   "↗ https://",
+   "example.co",
+   "m/a/very/l",
+   "ong/path/t",
+   "hat/never/",
+   "ends?x=1&y",
+   "=2 now"
+  ],
+  "clip": [
+   "see …"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "see",
+   "↗ https://",
+   "example.co",
+   "m/a/very/l",
+   "ong/path/t",
+   "hat/never/",
+   "ends?x=1&y",
+   "=2 now"
+  ],
+  "clip": [
+   "see",
+   "↗ https:/…"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "see",
+   "↗ https://",
+   "example.co",
+   "m/a/very/l",
+   "ong/path/t",
+   "hat/never/",
+   "ends?x=1&y",
+   "=2 now"
+  ],
+  "clip": [
+   "see",
+   "↗ https://",
+   "example.c…"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "see",
+   "↗ https://example",
+   ".com/a/very/long/",
+   "path/that/never/e",
+   "nds?x=1&y=2 now"
+  ],
+  "clip": [
+   "see …"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "see",
+   "↗ https://example",
+   ".com/a/very/long/",
+   "path/that/never/e",
+   "nds?x=1&y=2 now"
+  ],
+  "clip": [
+   "see",
+   "↗ https://exampl…"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "see",
+   "↗ https://example",
+   ".com/a/very/long/",
+   "path/that/never/e",
+   "nds?x=1&y=2 now"
+  ],
+  "clip": [
+   "see",
+   "↗ https://example",
+   ".com/a/very/long…"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "see",
+   "↗ https://example.com/a/very/long/path/t",
+   "hat/never/ends?x=1&y=2 now"
+  ],
+  "clip": [
+   "see …"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "see",
+   "↗ https://example.com/a/very/long/path/t",
+   "hat/never/ends?x=1&y=2 now"
+  ],
+  "clip": [
+   "see",
+   "↗ https://example.com/a/very/long/path/…"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "see",
+   "↗ https://example.com/a/very/long/path/t",
+   "hat/never/ends?x=1&y=2 now"
+  ],
+  "clip": [
+   "see",
+   "↗ https://example.com/a/very/long/path/t",
+   "hat/never/ends?x=1&y=2 now"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now"
+  ],
+  "clip": [
+   "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now"
+  ],
+  "clip": [
+   "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now"
+  ]
+ },
+ {
+  "text": "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now"
+  ],
+  "clip": [
+   "see ↗ https://example.com/a/very/long/path/that/never/ends?x=1&y=2 now"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "▣×3 thre",
+   "e",
+   "pictures",
+   "of cats",
+   "▣ and",
+   "▶ video",
+   "↗"
+  ],
+  "clip": [
+   "▣×3 …"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "▣×3 thre",
+   "e",
+   "pictures",
+   "of cats",
+   "▣ and",
+   "▶ video",
+   "↗"
+  ],
+  "clip": [
+   "▣×3 thre",
+   "e …"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "▣×3 thre",
+   "e",
+   "pictures",
+   "of cats",
+   "▣ and",
+   "▶ video",
+   "↗"
+  ],
+  "clip": [
+   "▣×3 thre",
+   "e",
+   "pict…"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "▣×3 thre",
+   "e",
+   "pictures",
+   "of cats",
+   "▣ and",
+   "▶ video",
+   "↗"
+  ],
+  "clip": [
+   "▣×3 thr…"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "▣×3 thre",
+   "e",
+   "pictures",
+   "of cats",
+   "▣ and",
+   "▶ video",
+   "↗"
+  ],
+  "clip": [
+   "▣×3 thre",
+   "e …"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "▣×3 thre",
+   "e",
+   "pictures",
+   "of cats",
+   "▣ and",
+   "▶ video",
+   "↗"
+  ],
+  "clip": [
+   "▣×3 thre",
+   "e",
+   "picture…"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "▣×3 three",
+   "pictures",
+   "of cats",
+   "▣ and",
+   "▶ video ↗"
+  ],
+  "clip": [
+   "▣×3 three…"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "▣×3 three",
+   "pictures",
+   "of cats",
+   "▣ and",
+   "▶ video ↗"
+  ],
+  "clip": [
+   "▣×3 three",
+   "pictures …"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "▣×3 three",
+   "pictures",
+   "of cats",
+   "▣ and",
+   "▶ video ↗"
+  ],
+  "clip": [
+   "▣×3 three",
+   "pictures",
+   "of cats …"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "▣×3 three",
+   "pictures of cats",
+   "▣ and ▶ video ↗"
+  ],
+  "clip": [
+   "▣×3 three …"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "▣×3 three",
+   "pictures of cats",
+   "▣ and ▶ video ↗"
+  ],
+  "clip": [
+   "▣×3 three",
+   "pictures of cats…"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "▣×3 three",
+   "pictures of cats",
+   "▣ and ▶ video ↗"
+  ],
+  "clip": [
+   "▣×3 three",
+   "pictures of cats",
+   "▣ and ▶ video ↗"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "▣×3 three pictures of cats ▣ and ▶ video",
+   "↗"
+  ],
+  "clip": [
+   "▣×3 three pictures of cats ▣ and ▶ vide…"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "▣×3 three pictures of cats ▣ and ▶ video",
+   "↗"
+  ],
+  "clip": [
+   "▣×3 three pictures of cats ▣ and ▶ video",
+   "↗"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "▣×3 three pictures of cats ▣ and ▶ video",
+   "↗"
+  ],
+  "clip": [
+   "▣×3 three pictures of cats ▣ and ▶ video",
+   "↗"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "▣×3 three pictures of cats ▣ and ▶ video ↗"
+  ],
+  "clip": [
+   "▣×3 three pictures of cats ▣ and ▶ video ↗"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "▣×3 three pictures of cats ▣ and ▶ video ↗"
+  ],
+  "clip": [
+   "▣×3 three pictures of cats ▣ and ▶ video ↗"
+  ]
+ },
+ {
+  "text": "▣×3 three pictures of cats ▣ and ▶ video ↗",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "▣×3 three pictures of cats ▣ and ▶ video ↗"
+  ],
+  "clip": [
+   "▣×3 three pictures of cats ▣ and ▶ video ↗"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "日本語の",
+   "テキスト",
+   "はとても",
+   "長い文章",
+   "になりま",
+   "す。そし",
+   "て続きま",
+   "す"
+  ],
+  "clip": [
+   "日本…"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "日本語の",
+   "テキスト",
+   "はとても",
+   "長い文章",
+   "になりま",
+   "す。そし",
+   "て続きま",
+   "す"
+  ],
+  "clip": [
+   "日本語の",
+   "テキ…"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "日本語の",
+   "テキスト",
+   "はとても",
+   "長い文章",
+   "になりま",
+   "す。そし",
+   "て続きま",
+   "す"
+  ],
+  "clip": [
+   "日本語の",
+   "テキスト",
+   "はと…"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "日本語の",
+   "テキスト",
+   "はとても",
+   "長い文章",
+   "になりま",
+   "す。そし",
+   "て続きま",
+   "す"
+  ],
+  "clip": [
+   "日本語…"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "日本語の",
+   "テキスト",
+   "はとても",
+   "長い文章",
+   "になりま",
+   "す。そし",
+   "て続きま",
+   "す"
+  ],
+  "clip": [
+   "日本語の",
+   "テキス…"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "日本語の",
+   "テキスト",
+   "はとても",
+   "長い文章",
+   "になりま",
+   "す。そし",
+   "て続きま",
+   "す"
+  ],
+  "clip": [
+   "日本語の",
+   "テキスト",
+   "はとて…"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "日本語のテ",
+   "キストはと",
+   "ても長い文",
+   "章になりま",
+   "す。そして",
+   "続きます"
+  ],
+  "clip": [
+   "日本語の…"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "日本語のテ",
+   "キストはと",
+   "ても長い文",
+   "章になりま",
+   "す。そして",
+   "続きます"
+  ],
+  "clip": [
+   "日本語のテ",
+   "キストは…"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "日本語のテ",
+   "キストはと",
+   "ても長い文",
+   "章になりま",
+   "す。そして",
+   "続きます"
+  ],
+  "clip": [
+   "日本語のテ",
+   "キストはと",
+   "ても長い…"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "日本語のテキスト",
+   "はとても長い文章",
+   "になります。そし",
+   "て続きます"
+  ],
+  "clip": [
+   "日本語のテキスト…"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "日本語のテキスト",
+   "はとても長い文章",
+   "になります。そし",
+   "て続きます"
+  ],
+  "clip": [
+   "日本語のテキスト",
+   "はとても長い文章…"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "日本語のテキスト",
+   "はとても長い文章",
+   "になります。そし",
+   "て続きます"
+  ],
+  "clip": [
+   "日本語のテキスト",
+   "はとても長い文章",
+   "になります。そし…"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "日本語のテキストはとても長い文章になりま",
+   "す。そして続きます"
+  ],
+  "clip": [
+   "日本語のテキストはとても長い文章になり…"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "日本語のテキストはとても長い文章になりま",
+   "す。そして続きます"
+  ],
+  "clip": [
+   "日本語のテキストはとても長い文章になりま",
+   "す。そして続きます"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "日本語のテキストはとても長い文章になりま",
+   "す。そして続きます"
+  ],
+  "clip": [
+   "日本語のテキストはとても長い文章になりま",
+   "す。そして続きます"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "日本語のテキストはとても長い文章になります。そして続きます"
+  ],
+  "clip": [
+   "日本語のテキストはとても長い文章になります。そして続きます"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "日本語のテキストはとても長い文章になります。そして続きます"
+  ],
+  "clip": [
+   "日本語のテキストはとても長い文章になります。そして続きます"
+  ]
+ },
+ {
+  "text": "日本語のテキストはとても長い文章になります。そして続きます",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "日本語のテキストはとても長い文章になります。そして続きます"
+  ],
+  "clip": [
+   "日本語のテキストはとても長い文章になります。そして続きます"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "emoji 👩‍",
+   "👩‍👧‍👦",
+   "family",
+   "and 🇯🇵",
+   "flag and",
+   "é",
+   "combinin",
+   "g"
+  ],
+  "clip": [
+   "emoj…"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "emoji 👩‍",
+   "👩‍👧‍👦",
+   "family",
+   "and 🇯🇵",
+   "flag and",
+   "é",
+   "combinin",
+   "g"
+  ],
+  "clip": [
+   "emoji 👩‍",
+   "👩‍👧‍👦 …"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "emoji 👩‍",
+   "👩‍👧‍👦",
+   "family",
+   "and 🇯🇵",
+   "flag and",
+   "é",
+   "combinin",
+   "g"
+  ],
+  "clip": [
+   "emoji 👩‍",
+   "👩‍👧‍👦",
+   "fami…"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "emoji 👩‍",
+   "👩‍👧‍👦",
+   "family",
+   "and 🇯🇵",
+   "flag and",
+   "é",
+   "combinin",
+   "g"
+  ],
+  "clip": [
+   "emoji …"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "emoji 👩‍",
+   "👩‍👧‍👦",
+   "family",
+   "and 🇯🇵",
+   "flag and",
+   "é",
+   "combinin",
+   "g"
+  ],
+  "clip": [
+   "emoji 👩‍",
+   "👩‍👧‍👦 …"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "emoji 👩‍",
+   "👩‍👧‍👦",
+   "family",
+   "and 🇯🇵",
+   "flag and",
+   "é",
+   "combinin",
+   "g"
+  ],
+  "clip": [
+   "emoji 👩‍",
+   "👩‍👧‍👦",
+   "family …"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "emoji 👩‍👩‍",
+   "👧‍👦",
+   "family and",
+   "🇯🇵 flag",
+   "and é",
+   "combining"
+  ],
+  "clip": [
+   "emoji 👩‍👩‍ …"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "emoji 👩‍👩‍",
+   "👧‍👦",
+   "family and",
+   "🇯🇵 flag",
+   "and é",
+   "combining"
+  ],
+  "clip": [
+   "emoji 👩‍👩‍",
+   "👧‍👦 …"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "emoji 👩‍👩‍",
+   "👧‍👦",
+   "family and",
+   "🇯🇵 flag",
+   "and é",
+   "combining"
+  ],
+  "clip": [
+   "emoji 👩‍👩‍",
+   "👧‍👦",
+   "family an…"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "emoji 👩‍👩‍👧‍👦",
+   "family and 🇯🇵",
+   "flag and é",
+   "combining"
+  ],
+  "clip": [
+   "emoji 👩‍👩‍👧‍👦 …"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "emoji 👩‍👩‍👧‍👦",
+   "family and 🇯🇵",
+   "flag and é",
+   "combining"
+  ],
+  "clip": [
+   "emoji 👩‍👩‍👧‍👦",
+   "family and 🇯🇵 …"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "emoji 👩‍👩‍👧‍👦",
+   "family and 🇯🇵",
+   "flag and é",
+   "combining"
+  ],
+  "clip": [
+   "emoji 👩‍👩‍👧‍👦",
+   "family and 🇯🇵",
+   "flag and é …"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and",
+   "é combining"
+  ],
+  "clip": [
+   "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and …"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and",
+   "é combining"
+  ],
+  "clip": [
+   "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and",
+   "é combining"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and",
+   "é combining"
+  ],
+  "clip": [
+   "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and",
+   "é combining"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining"
+  ],
+  "clip": [
+   "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining"
+  ],
+  "clip": [
+   "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining"
+  ]
+ },
+ {
+  "text": "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining"
+  ],
+  "clip": [
+   "emoji 👩‍👩‍👧‍👦 family and 🇯🇵 flag and é combining"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "mention",
+   "@alice.b",
+   "sky.soci",
+   "al and",
+   "bob.exam",
+   "ple.com/",
+   "path,",
+   "visit",
+   "https://",
+   "x.io."
+  ],
+  "clip": [
+   "ment…"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "mention",
+   "@alice.b",
+   "sky.soci",
+   "al and",
+   "bob.exam",
+   "ple.com/",
+   "path,",
+   "visit",
+   "https://",
+   "x.io."
+  ],
+  "clip": [
+   "mention",
+   "@ali…"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "mention",
+   "@alice.b",
+   "sky.soci",
+   "al and",
+   "bob.exam",
+   "ple.com/",
+   "path,",
+   "visit",
+   "https://",
+   "x.io."
+  ],
+  "clip": [
+   "mention",
+   "@alice.b",
+   "sky.…"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "mention",
+   "@alice.b",
+   "sky.soci",
+   "al and",
+   "bob.exam",
+   "ple.com/",
+   "path,",
+   "visit",
+   "https://",
+   "x.io."
+  ],
+  "clip": [
+   "mention…"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "mention",
+   "@alice.b",
+   "sky.soci",
+   "al and",
+   "bob.exam",
+   "ple.com/",
+   "path,",
+   "visit",
+   "https://",
+   "x.io."
+  ],
+  "clip": [
+   "mention",
+   "@alice.…"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "mention",
+   "@alice.b",
+   "sky.soci",
+   "al and",
+   "bob.exam",
+   "ple.com/",
+   "path,",
+   "visit",
+   "https://",
+   "x.io."
+  ],
+  "clip": [
+   "mention",
+   "@alice.b",
+   "sky.soc…"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "mention",
+   "@alice.bsk",
+   "y.social",
+   "and",
+   "bob.exampl",
+   "e.com/path",
+   ", visit",
+   "https://x.",
+   "io."
+  ],
+  "clip": [
+   "mention …"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "mention",
+   "@alice.bsk",
+   "y.social",
+   "and",
+   "bob.exampl",
+   "e.com/path",
+   ", visit",
+   "https://x.",
+   "io."
+  ],
+  "clip": [
+   "mention",
+   "@alice.bs…"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "mention",
+   "@alice.bsk",
+   "y.social",
+   "and",
+   "bob.exampl",
+   "e.com/path",
+   ", visit",
+   "https://x.",
+   "io."
+  ],
+  "clip": [
+   "mention",
+   "@alice.bsk",
+   "y.social …"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "mention",
+   "@alice.bsky.socia",
+   "l and",
+   "bob.example.com/p",
+   "ath, visit",
+   "https://x.io."
+  ],
+  "clip": [
+   "mention …"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "mention",
+   "@alice.bsky.socia",
+   "l and",
+   "bob.example.com/p",
+   "ath, visit",
+   "https://x.io."
+  ],
+  "clip": [
+   "mention",
+   "@alice.bsky.soci…"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "mention",
+   "@alice.bsky.socia",
+   "l and",
+   "bob.example.com/p",
+   "ath, visit",
+   "https://x.io."
+  ],
+  "clip": [
+   "mention",
+   "@alice.bsky.socia",
+   "l and …"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "mention @alice.bsky.social and",
+   "bob.example.com/path, visit",
+   "https://x.io."
+  ],
+  "clip": [
+   "mention @alice.bsky.social and …"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "mention @alice.bsky.social and",
+   "bob.example.com/path, visit",
+   "https://x.io."
+  ],
+  "clip": [
+   "mention @alice.bsky.social and",
+   "bob.example.com/path, visit …"
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "mention @alice.bsky.social and",
+   "bob.example.com/path, visit",
+   "https://x.io."
+  ],
+  "clip": [
+   "mention @alice.bsky.social and",
+   "bob.example.com/path, visit",
+   "https://x.io."
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "mention @alice.bsky.social and bob.example.com/path, visit https://x.io."
+  ],
+  "clip": [
+   "mention @alice.bsky.social and bob.example.com/path, visit https://x.io."
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "mention @alice.bsky.social and bob.example.com/path, visit https://x.io."
+  ],
+  "clip": [
+   "mention @alice.bsky.social and bob.example.com/path, visit https://x.io."
+  ]
+ },
+ {
+  "text": "mention @alice.bsky.social and bob.example.com/path, visit https://x.io.",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "mention @alice.bsky.social and bob.example.com/path, visit https://x.io."
+  ],
+  "clip": [
+   "mention @alice.bsky.social and bob.example.com/path, visit https://x.io."
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "leading",
+   "and",
+   "multiple",
+   "spaces"
+  ],
+  "clip": [
+   "lead…"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "leading",
+   "and",
+   "multiple",
+   "spaces"
+  ],
+  "clip": [
+   "leading",
+   "and …"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "leading",
+   "and",
+   "multiple",
+   "spaces"
+  ],
+  "clip": [
+   "leading",
+   "and",
+   "mult…"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "leading",
+   "and",
+   "multiple",
+   "spaces"
+  ],
+  "clip": [
+   "leading…"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "leading",
+   "and",
+   "multiple",
+   "spaces"
+  ],
+  "clip": [
+   "leading",
+   "and …"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "leading",
+   "and",
+   "multiple",
+   "spaces"
+  ],
+  "clip": [
+   "leading",
+   "and",
+   "multipl…"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "leading",
+   "and",
+   "multiple",
+   "spaces"
+  ],
+  "clip": [
+   "leading …"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "leading",
+   "and",
+   "multiple",
+   "spaces"
+  ],
+  "clip": [
+   "leading",
+   "and …"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "leading",
+   "and",
+   "multiple",
+   "spaces"
+  ],
+  "clip": [
+   "leading",
+   "and",
+   "multiple …"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "leading and",
+   "multiple spaces"
+  ],
+  "clip": [
+   "leading and …"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "leading and",
+   "multiple spaces"
+  ],
+  "clip": [
+   "leading and",
+   "multiple spaces"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "leading and",
+   "multiple spaces"
+  ],
+  "clip": [
+   "leading and",
+   "multiple spaces"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "leading and multiple spaces"
+  ],
+  "clip": [
+   "leading and multiple spaces"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "leading and multiple spaces"
+  ],
+  "clip": [
+   "leading and multiple spaces"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "leading and multiple spaces"
+  ],
+  "clip": [
+   "leading and multiple spaces"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "leading and multiple spaces"
+  ],
+  "clip": [
+   "leading and multiple spaces"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "leading and multiple spaces"
+  ],
+  "clip": [
+   "leading and multiple spaces"
+  ]
+ },
+ {
+  "text": "   leading and    multiple    spaces   ",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "leading and multiple spaces"
+  ],
+  "clip": [
+   "leading and multiple spaces"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "tab",
+   "separate",
+   "d words",
+   "here"
+  ],
+  "clip": [
+   "tab …"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "tab",
+   "separate",
+   "d words",
+   "here"
+  ],
+  "clip": [
+   "tab",
+   "sepa…"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "tab",
+   "separate",
+   "d words",
+   "here"
+  ],
+  "clip": [
+   "tab",
+   "separate",
+   "d wo…"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "tab",
+   "separate",
+   "d words",
+   "here"
+  ],
+  "clip": [
+   "tab …"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "tab",
+   "separate",
+   "d words",
+   "here"
+  ],
+  "clip": [
+   "tab",
+   "separat…"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "tab",
+   "separate",
+   "d words",
+   "here"
+  ],
+  "clip": [
+   "tab",
+   "separate",
+   "d words…"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "tab",
+   "separated",
+   "words here"
+  ],
+  "clip": [
+   "tab …"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "tab",
+   "separated",
+   "words here"
+  ],
+  "clip": [
+   "tab",
+   "separated…"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "tab",
+   "separated",
+   "words here"
+  ],
+  "clip": [
+   "tab",
+   "separated",
+   "words here"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "tab separated",
+   "words here"
+  ],
+  "clip": [
+   "tab separated …"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "tab separated",
+   "words here"
+  ],
+  "clip": [
+   "tab separated",
+   "words here"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "tab separated",
+   "words here"
+  ],
+  "clip": [
+   "tab separated",
+   "words here"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "tab separated words here"
+  ],
+  "clip": [
+   "tab separated words here"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "tab separated words here"
+  ],
+  "clip": [
+   "tab separated words here"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "tab separated words here"
+  ],
+  "clip": [
+   "tab separated words here"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "tab separated words here"
+  ],
+  "clip": [
+   "tab separated words here"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "tab separated words here"
+  ],
+  "clip": [
+   "tab separated words here"
+  ]
+ },
+ {
+  "text": "tab\tseparated\twords here",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "tab separated words here"
+  ],
+  "clip": [
+   "tab separated words here"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "ctrlchar",
+   "s and",
+   "ansi",
+   "stripped"
+  ],
+  "clip": [
+   "ctrl…"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "ctrlchar",
+   "s and",
+   "ansi",
+   "stripped"
+  ],
+  "clip": [
+   "ctrlchar",
+   "s an…"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "ctrlchar",
+   "s and",
+   "ansi",
+   "stripped"
+  ],
+  "clip": [
+   "ctrlchar",
+   "s and",
+   "ansi…"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "ctrlchar",
+   "s and",
+   "ansi",
+   "stripped"
+  ],
+  "clip": [
+   "ctrlcha…"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "ctrlchar",
+   "s and",
+   "ansi",
+   "stripped"
+  ],
+  "clip": [
+   "ctrlchar",
+   "s and …"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "ctrlchar",
+   "s and",
+   "ansi",
+   "stripped"
+  ],
+  "clip": [
+   "ctrlchar",
+   "s and",
+   "ansi …"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "ctrlchars",
+   "and ansi",
+   "stripped"
+  ],
+  "clip": [
+   "ctrlchars…"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "ctrlchars",
+   "and ansi",
+   "stripped"
+  ],
+  "clip": [
+   "ctrlchars",
+   "and ansi …"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "ctrlchars",
+   "and ansi",
+   "stripped"
+  ],
+  "clip": [
+   "ctrlchars",
+   "and ansi",
+   "stripped"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "ctrlchars and",
+   "ansi stripped"
+  ],
+  "clip": [
+   "ctrlchars and …"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "ctrlchars and",
+   "ansi stripped"
+  ],
+  "clip": [
+   "ctrlchars and",
+   "ansi stripped"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "ctrlchars and",
+   "ansi stripped"
+  ],
+  "clip": [
+   "ctrlchars and",
+   "ansi stripped"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "ctrlchars and ansi stripped"
+  ],
+  "clip": [
+   "ctrlchars and ansi stripped"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "ctrlchars and ansi stripped"
+  ],
+  "clip": [
+   "ctrlchars and ansi stripped"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "ctrlchars and ansi stripped"
+  ],
+  "clip": [
+   "ctrlchars and ansi stripped"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "ctrlchars and ansi stripped"
+  ],
+  "clip": [
+   "ctrlchars and ansi stripped"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "ctrlchars and ansi stripped"
+  ],
+  "clip": [
+   "ctrlchars and ansi stripped"
+  ]
+ },
+ {
+  "text": "ctrl\u0007chars\u001b[31m and ansi\u001b[0m stripped",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "ctrlchars and ansi stripped"
+  ],
+  "clip": [
+   "ctrlchars and ansi stripped"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "a",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "a"
+  ],
+  "clip": [
+   "a"
+  ]
+ },
+ {
+  "text": "",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   ""
+  ],
+  "clip": []
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "averyver",
+   "yveryver",
+   "ylongwor",
+   "dwithout",
+   "anyspace",
+   "satall",
+   "followed",
+   "by more"
+  ],
+  "clip": [
+   "aver…"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "averyver",
+   "yveryver",
+   "ylongwor",
+   "dwithout",
+   "anyspace",
+   "satall",
+   "followed",
+   "by more"
+  ],
+  "clip": [
+   "averyver",
+   "yver…"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "averyver",
+   "yveryver",
+   "ylongwor",
+   "dwithout",
+   "anyspace",
+   "satall",
+   "followed",
+   "by more"
+  ],
+  "clip": [
+   "averyver",
+   "yveryver",
+   "ylon…"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "averyver",
+   "yveryver",
+   "ylongwor",
+   "dwithout",
+   "anyspace",
+   "satall",
+   "followed",
+   "by more"
+  ],
+  "clip": [
+   "averyve…"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "averyver",
+   "yveryver",
+   "ylongwor",
+   "dwithout",
+   "anyspace",
+   "satall",
+   "followed",
+   "by more"
+  ],
+  "clip": [
+   "averyver",
+   "yveryve…"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "averyver",
+   "yveryver",
+   "ylongwor",
+   "dwithout",
+   "anyspace",
+   "satall",
+   "followed",
+   "by more"
+  ],
+  "clip": [
+   "averyver",
+   "yveryver",
+   "ylongwo…"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "averyveryv",
+   "eryverylon",
+   "gwordwitho",
+   "utanyspace",
+   "satall",
+   "followed",
+   "by more"
+  ],
+  "clip": [
+   "averyvery…"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "averyveryv",
+   "eryverylon",
+   "gwordwitho",
+   "utanyspace",
+   "satall",
+   "followed",
+   "by more"
+  ],
+  "clip": [
+   "averyveryv",
+   "eryverylo…"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "averyveryv",
+   "eryverylon",
+   "gwordwitho",
+   "utanyspace",
+   "satall",
+   "followed",
+   "by more"
+  ],
+  "clip": [
+   "averyveryv",
+   "eryverylon",
+   "gwordwith…"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "averyveryveryvery",
+   "longwordwithoutan",
+   "yspacesatall",
+   "followed by more"
+  ],
+  "clip": [
+   "averyveryveryver…"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "averyveryveryvery",
+   "longwordwithoutan",
+   "yspacesatall",
+   "followed by more"
+  ],
+  "clip": [
+   "averyveryveryvery",
+   "longwordwithouta…"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "averyveryveryvery",
+   "longwordwithoutan",
+   "yspacesatall",
+   "followed by more"
+  ],
+  "clip": [
+   "averyveryveryvery",
+   "longwordwithoutan",
+   "yspacesatall …"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "averyveryveryverylongwordwithoutanyspace",
+   "satall followed by more"
+  ],
+  "clip": [
+   "averyveryveryverylongwordwithoutanyspac…"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "averyveryveryverylongwordwithoutanyspace",
+   "satall followed by more"
+  ],
+  "clip": [
+   "averyveryveryverylongwordwithoutanyspace",
+   "satall followed by more"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "averyveryveryverylongwordwithoutanyspace",
+   "satall followed by more"
+  ],
+  "clip": [
+   "averyveryveryverylongwordwithoutanyspace",
+   "satall followed by more"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "averyveryveryverylongwordwithoutanyspacesatall followed by more"
+  ],
+  "clip": [
+   "averyveryveryverylongwordwithoutanyspacesatall followed by more"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "averyveryveryverylongwordwithoutanyspacesatall followed by more"
+  ],
+  "clip": [
+   "averyveryveryverylongwordwithoutanyspacesatall followed by more"
+  ]
+ },
+ {
+  "text": "averyveryveryverylongwordwithoutanyspacesatall followed by more",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "averyveryveryverylongwordwithoutanyspacesatall followed by more"
+  ],
+  "clip": [
+   "averyveryveryverylongwordwithoutanyspacesatall followed by more"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 5,
+  "n": 1,
+  "wrap": [
+   "quote",
+   "❝fancy❞",
+   "“curly”",
+   "— dashes",
+   "…",
+   "ellipsis"
+  ],
+  "clip": [
+   "quot…"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 5,
+  "n": 2,
+  "wrap": [
+   "quote",
+   "❝fancy❞",
+   "“curly”",
+   "— dashes",
+   "…",
+   "ellipsis"
+  ],
+  "clip": [
+   "quote",
+   "❝fan…"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 5,
+  "n": 3,
+  "wrap": [
+   "quote",
+   "❝fancy❞",
+   "“curly”",
+   "— dashes",
+   "…",
+   "ellipsis"
+  ],
+  "clip": [
+   "quote",
+   "❝fancy❞",
+   "“cur…"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 8,
+  "n": 1,
+  "wrap": [
+   "quote",
+   "❝fancy❞",
+   "“curly”",
+   "— dashes",
+   "…",
+   "ellipsis"
+  ],
+  "clip": [
+   "quote …"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 8,
+  "n": 2,
+  "wrap": [
+   "quote",
+   "❝fancy❞",
+   "“curly”",
+   "— dashes",
+   "…",
+   "ellipsis"
+  ],
+  "clip": [
+   "quote",
+   "❝fancy❞…"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 8,
+  "n": 3,
+  "wrap": [
+   "quote",
+   "❝fancy❞",
+   "“curly”",
+   "— dashes",
+   "…",
+   "ellipsis"
+  ],
+  "clip": [
+   "quote",
+   "❝fancy❞",
+   "“curly”…"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 10,
+  "n": 1,
+  "wrap": [
+   "quote",
+   "❝fancy❞",
+   "“curly” —",
+   "dashes …",
+   "ellipsis"
+  ],
+  "clip": [
+   "quote …"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 10,
+  "n": 2,
+  "wrap": [
+   "quote",
+   "❝fancy❞",
+   "“curly” —",
+   "dashes …",
+   "ellipsis"
+  ],
+  "clip": [
+   "quote",
+   "❝fancy❞ …"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 10,
+  "n": 3,
+  "wrap": [
+   "quote",
+   "❝fancy❞",
+   "“curly” —",
+   "dashes …",
+   "ellipsis"
+  ],
+  "clip": [
+   "quote",
+   "❝fancy❞",
+   "“curly” —…"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 17,
+  "n": 1,
+  "wrap": [
+   "quote ❝fancy❞",
+   "“curly” — dashes",
+   "… ellipsis"
+  ],
+  "clip": [
+   "quote ❝fancy❞ …"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 17,
+  "n": 2,
+  "wrap": [
+   "quote ❝fancy❞",
+   "“curly” — dashes",
+   "… ellipsis"
+  ],
+  "clip": [
+   "quote ❝fancy❞",
+   "“curly” — dashes…"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 17,
+  "n": 3,
+  "wrap": [
+   "quote ❝fancy❞",
+   "“curly” — dashes",
+   "… ellipsis"
+  ],
+  "clip": [
+   "quote ❝fancy❞",
+   "“curly” — dashes",
+   "… ellipsis"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 40,
+  "n": 1,
+  "wrap": [
+   "quote ❝fancy❞ “curly” — dashes …",
+   "ellipsis"
+  ],
+  "clip": [
+   "quote ❝fancy❞ “curly” — dashes … …"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 40,
+  "n": 2,
+  "wrap": [
+   "quote ❝fancy❞ “curly” — dashes …",
+   "ellipsis"
+  ],
+  "clip": [
+   "quote ❝fancy❞ “curly” — dashes …",
+   "ellipsis"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 40,
+  "n": 3,
+  "wrap": [
+   "quote ❝fancy❞ “curly” — dashes …",
+   "ellipsis"
+  ],
+  "clip": [
+   "quote ❝fancy❞ “curly” — dashes …",
+   "ellipsis"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 72,
+  "n": 1,
+  "wrap": [
+   "quote ❝fancy❞ “curly” — dashes … ellipsis"
+  ],
+  "clip": [
+   "quote ❝fancy❞ “curly” — dashes … ellipsis"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 72,
+  "n": 2,
+  "wrap": [
+   "quote ❝fancy❞ “curly” — dashes … ellipsis"
+  ],
+  "clip": [
+   "quote ❝fancy❞ “curly” — dashes … ellipsis"
+  ]
+ },
+ {
+  "text": "quote ❝fancy❞ “curly” — dashes … ellipsis",
+  "w": 72,
+  "n": 3,
+  "wrap": [
+   "quote ❝fancy❞ “curly” — dashes … ellipsis"
+  ],
+  "clip": [
+   "quote ❝fancy❞ “curly” — dashes … ellipsis"
+  ]
+ }
+]

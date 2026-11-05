@@ -3,12 +3,13 @@
 use std::collections::HashMap;
 
 use crate::bsky::{Client, Error, FeedItem, Post, Profile};
-use crate::store::{self, State};
+use crate::store::{self, Audit, State};
 
 /// A logged-in client with the local decisions it works against.
 pub struct App {
     pub client: Client,
     pub state: State,
+    pub audit: Audit,
 }
 
 /// How a candidate reached your timeline.
@@ -92,7 +93,11 @@ mod tests {
                 },
             );
         }
-        App { client, state }
+        App {
+            client,
+            state,
+            audit: Audit::new("/nonexistent/audit.jsonl"),
+        }
     }
 
     fn p(did: &str) -> Profile {

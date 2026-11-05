@@ -71,6 +71,8 @@ class FakePDS:
                     if r.get("method", "GET") != self.command or r["path"] != u.path:
                         continue
                     if all((k not in q) if want is None else (q.get(k) == [want]) for k, want in r.get("q", {}).items()):
+                        if r.get("delay"):
+                            time.sleep(r["delay"])
                         status, payload = r.get("status", 200), expand(r.get("body", {}))
                         data = payload.encode() if isinstance(payload, str) else json.dumps(payload).encode()
                         self.send_response(status)
@@ -139,7 +141,7 @@ def run_case(case, binary, go_syntax=False):
             out = b"".join(chunks).replace(b"\r\n", b"\n")
         else:
             p = subprocess.run([binary] + args, env=env, cwd=tmp, input=(stdin or "").encode(),
-                               capture_output=True, timeout=60)
+                               capture_output=True, timeout=60, start_new_session=True)
             out, err = p.stdout, p.stderr
         files = {}
         for root, _, names in os.walk(tmp):

@@ -122,6 +122,118 @@ pub fn collapse_ws(s: &str) -> String {
     s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+fn is_mark(w: &str) -> bool {
+    w == "↗"
+        || w == VIDEO_MARK
+        || w == IMAGE_MARK
+        || w.strip_prefix("▣×")
+            .is_some_and(|d| d.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// Joins a lone marker (`↗`, `▶`, `▣`, `▣×3`) to the word after it so a line break never
+/// strands the marker at the end of a line.
+fn glue_prefixes(words: Vec<&str>) -> Vec<String> {
+    let mut out = Vec::with_capacity(words.len());
+    let mut i = 0;
+    while i < words.len() {
+        if is_mark(words[i]) && i + 1 < words.len() {
+            out.push(format!("{} {}", words[i], words[i + 1]));
+            i += 2;
+        } else {
+            out.push(words[i].to_string());
+            i += 1;
+        }
+    }
+    out
+}
+
+/// Width of a character on its own as Go's grapheme-based measure sees it (a lone regional
+/// indicator is drawn as an emoji, 2 columns).
+fn rune_width(c: char) -> usize {
+    if ('\u{1F1E6}'..='\u{1F1FF}').contains(&c) {
+        2
+    } else {
+        c.width().unwrap_or(0)
+    }
+}
+
+/// Word-wraps `text` to `width` columns (minimum 8). A word longer than a line is split
+/// across lines; newlines in `text` are kept. Plain text only: the list view discards
+/// hyperlinks, so OSC 8 is added elsewhere.
+pub fn wrap(text: &str, width: i64) -> Vec<String> {
+    let width = width.max(8) as usize;
+    let text = sanitize(text);
+    let mut lines = Vec::new();
+    for para in text.split('\n') {
+        let words = glue_prefixes(para.split_whitespace().collect());
+        if words.is_empty() {
+            lines.push(String::new());
+            continue;
+        }
+        let mut cur = String::new();
+        let mut cur_w = 0usize;
+        for word in &words {
+            let word_w = word.width();
+            if cur_w > 0 && cur_w + 1 + word_w > width {
+                lines.push(std::mem::take(&mut cur));
+                cur_w = 0;
+            }
+            if cur_w > 0 {
+                cur.push(' ');
+                cur_w += 1;
+            }
+            let rs: Vec<char> = word.chars().collect();
+            let mut i = 0;
+            while i < rs.len() {
+                if cur_w >= width {
+                    lines.push(std::mem::take(&mut cur));
+                    cur_w = 0;
+                }
+                // take as many characters as still fit (zero-width ones stay attached)
+                let (mut j, mut w) = (i, 0);
+                while j < rs.len() {
+                    let rw = rune_width(rs[j]);
+                    if cur_w + w + rw > width {
+                        break;
+                    }
+                    w += rw;
+                    j += 1;
+                }
+                if j == i {
+                    // the next character does not fit in what is left of this line
+                    if cur_w > 0 {
+                        lines.push(std::mem::take(&mut cur));
+                        cur_w = 0;
+                        continue;
+                    }
+                    j = i + 1;
+                    w = rune_width(rs[i]);
+                }
+                cur.extend(&rs[i..j]);
+                cur_w += w;
+                i = j;
+            }
+        }
+        lines.push(cur);
+    }
+    lines
+}
+
+/// Hard-wraps `text` to `w` columns keeping at most `n` lines; the last ends in `…` when
+/// something was cut.
+pub fn clip(text: &str, w: i64, n: usize) -> Vec<String> {
+    if text.is_empty() {
+        return Vec::new();
+    }
+    let mut lines = wrap(text, w);
+    if lines.len() > n {
+        lines.truncate(n);
+        let last = format!("{} …", lines[n - 1]);
+        lines[n - 1] = truncate_width(&last, w.max(0) as usize);
+    }
+    lines
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -145,6 +257,30 @@ mod tests {
         assert_eq!(truncate_width("hello world", 6), "hello…");
         assert_eq!(truncate_width("日本語です", 6), "日本…");
         assert_eq!(truncate_width("x", 0), "");
+    }
+
+    /// Expected values were produced by Go's `termtext.Wrap` + `tui.clip` (tests/compat/wrap_cases.json).
+    #[test]
+    fn wrap_and_clip_match_go() {
+        let cases: Vec<serde_json::Value> =
+            serde_json::from_str(include_str!("../tests/compat/wrap_cases.json")).unwrap();
+        assert!(cases.len() > 20);
+        for c in cases {
+            let (text, w, n) = (
+                c["text"].as_str().unwrap(),
+                c["w"].as_i64().unwrap(),
+                c["n"].as_u64().unwrap() as usize,
+            );
+            let want = |k: &str| -> Vec<String> {
+                c[k].as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|s| s.as_str().unwrap().to_string())
+                    .collect()
+            };
+            assert_eq!(wrap(text, w), want("wrap"), "wrap({text:?}, {w})");
+            assert_eq!(clip(text, w, n), want("clip"), "clip({text:?}, {w}, {n})");
+        }
     }
 
     #[test]

@@ -128,7 +128,7 @@ pub struct PostStats {
 }
 
 /// One timeline entry: a post, its author, and who reposted it (if anyone).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct FeedItem {
     pub post: Post,
     pub author: Profile,

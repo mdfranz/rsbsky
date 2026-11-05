@@ -152,9 +152,11 @@ for n, args in [("refresh_zero_ok", ["feed", "--refresh", "0"]), ("refresh_10s_o
 
 # deferred command bodies (credential-free or not yet ported)
 case("log_empty", ["log"], env=NO_CREDS, defer="phase 4")
-case("themes_preview", ["themes"], env=NO_CREDS, defer="phase 2")
+case("themes_preview", ["themes"], env=NO_CREDS)
+case("themes_preview_no_color", ["themes"], env=dict(NO_CREDS, NO_COLOR="1"))
+case("themes_preview_tty", ["themes"], env=NO_CREDS, tty=100, defer="colour escapes differ (lipgloss vs raw SGR); checked by unit tests")
 case("themes_with_args", ["themes", "x"], env=NO_CREDS, cmp="status")
-case("feed_tui_stub", ["feed"], routes=TIMELINE, defer="phase 2")
+case("feed_without_terminal", ["feed"], routes=TIMELINE, cmp="stderr_first_line")  # both fail after login; wording differs
 case("block_command", ["block", "someone"], defer="phase 4")
 
 # ---------------------------------------------------------------- Phase 1: login and API errors
@@ -190,7 +192,7 @@ case("list_pages_4", LIST + ["--pages", "4"], routes=TIMELINE, files={"state.jso
 case("list_pages_0_is_one", LIST + ["--pages", "0"], routes=TIMELINE, files={"state.json": STATE})
 case("list_no_state_file", LIST, routes=TIMELINE)
 case("list_bare_flags_default_command", ["--list"], routes=TIMELINE, files={"state.json": STATE})
-case("list_json_without_list_is_tui", ["--json"], routes=TIMELINE, defer="phase 2")
+case("list_json_without_list_is_tui", ["--json"], routes=TIMELINE, cmp="stderr_first_line")
 case("list_ignores_refresh_flag", LIST + ["--refresh", "0", "--fancy"], routes=TIMELINE, files={"state.json": STATE})
 case("list_theme_flag_valid", LIST + ["--theme", "dracula"], routes=TIMELINE)
 
