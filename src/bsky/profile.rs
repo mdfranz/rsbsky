@@ -80,8 +80,13 @@ impl From<RawProfile> for Profile {
 impl Profile {
     /// Account age, or zero if the creation time is unknown.
     pub fn age(&self) -> Duration {
+        self.age_at(Utc::now())
+    }
+
+    /// Account age as of `now`.
+    pub fn age_at(&self, now: DateTime<Utc>) -> Duration {
         DateTime::parse_from_rfc3339(&self.created_at)
-            .map(|t| Utc::now().signed_duration_since(t))
+            .map(|t| now.signed_duration_since(t))
             .unwrap_or_else(|_| Duration::zero())
     }
 }

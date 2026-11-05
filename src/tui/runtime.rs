@@ -21,8 +21,10 @@ use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio::time::{Instant, Interval, MissedTickBehavior, interval_at};
 
+use super::feed::RECENT_POSTS;
 use super::feed::{ANIM_TICK, CHECK_PAGES, CheckOutcome, Effect, FeedApp, Msg, Now, PAGE_SIZE};
 use super::links::{LinkMode, LinkPass};
+use super::picker::open_url;
 use super::render::render;
 use crate::bsky::Client;
 use crate::store::Audit;
@@ -148,6 +150,44 @@ pub async fn run(mut app: FeedApp, client: Client, audit: Audit) -> io::Result<(
                     if let Err(e) = audit.log(*ev) {
                         pending.extend(app.on_msg(Msg::AuditFailed(e.to_string()), Now::current()));
                     }
+                }
+                Effect::FetchProfile { did } => {
+                    let (c1, tx1, d1) = (client.clone(), tx.clone(), did.clone());
+                    tasks.spawn(async move {
+                        let result = c1
+                            .get_profile(&d1)
+                            .await
+                            .map(Box::new)
+                            .map_err(|e| e.to_string());
+                        let _ = tx1.send(Msg::Profile { did: d1, result });
+                    });
+                    let (c, tx) = (client.clone(), tx.clone());
+                    tasks.spawn(async move {
+                        let result = c
+                            .get_recent_posts(&did, RECENT_POSTS)
+                            .await
+                            .map_err(|e| e.to_string());
+                        let _ = tx.send(Msg::Posts { did, result });
+                    });
+                }
+                Effect::Open {
+                    urls,
+                    status,
+                    err_prefix,
+                } => {
+                    // launching is non-blocking; stop at the first failure like Go does
+                    let result = urls
+                        .iter()
+                        .try_for_each(|u| open_url(u))
+                        .map_err(|e| e.to_string());
+                    pending.extend(app.on_msg(
+                        Msg::OpenDone {
+                            result,
+                            status,
+                            err_prefix,
+                        },
+                        Now::current(),
+                    ));
                 }
                 Effect::LoadPage { id, cursor } => {
                     let (c, tx) = (client.clone(), tx.clone());

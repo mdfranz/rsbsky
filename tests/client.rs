@@ -362,3 +362,58 @@ async fn check_failure_is_reported_with_the_api_error() {
         );
     }
 }
+
+// ---------------------------------------------------------------- detail view (Phase 3)
+
+#[tokio::test]
+async fn recent_posts_use_the_author_feed_with_replies_and_keep_repost_flags() {
+    let server = MockServer::start().await;
+    let c = logged_in(&server).await;
+    Mock::given(method("GET"))
+        .and(path("/xrpc/app.bsky.feed.getAuthorFeed"))
+        .and(header("authorization", "Bearer JWT"))
+        .and(query_param("actor", "did:x"))
+        .and(query_param("limit", "5"))
+        .and(query_param("filter", "posts_with_replies"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "feed":[original("a"), repost("r.test", "b"),
+                {"post":{"uri":"at://did:x/app.bsky.feed.post/c","record":{"text":"re","createdAt":"2024-01-03T00:00:00Z","reply":{"root":{"uri":"u","cid":"c"},"parent":{"uri":"u","cid":"c"}}}},
+                 "reply":{"parent":{"author":{"handle":"p.test"},"record":{"text":"parent"}}}}]
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let posts = c.get_recent_posts("did:x", 5).await.unwrap();
+    assert_eq!(posts.len(), 3);
+    assert!(!posts[0].repost && !posts[0].reply);
+    assert!(
+        posts[1].repost,
+        "the author's own reposts are marked so the panel can label them"
+    );
+    assert!(posts[2].reply);
+    assert_eq!(
+        (
+            posts[2].parent_handle.as_str(),
+            posts[2].parent_text.as_str()
+        ),
+        ("p.test", "parent")
+    );
+}
+
+#[tokio::test]
+async fn recent_posts_error_is_reported_like_other_api_errors() {
+    let server = MockServer::start().await;
+    let c = logged_in(&server).await;
+    Mock::given(method("GET"))
+        .respond_with(
+            ResponseTemplate::new(400)
+                .set_body_json(json!({"error":"BlockedActor","message":"Requester is blocked"})),
+        )
+        .mount(&server)
+        .await;
+    let err = c.get_recent_posts("did:x", 5).await.unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "app.bsky.feed.getAuthorFeed: Requester is blocked (BlockedActor)"
+    );
+}

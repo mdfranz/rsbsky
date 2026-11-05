@@ -239,6 +239,17 @@ impl Client {
         Ok((out.feed, out.cursor))
     }
 
+    /// Up to `limit` of an account's latest posts, replies and reposts included.
+    pub async fn get_recent_posts(&self, actor: &str, limit: usize) -> Result<Vec<Post>, Error> {
+        let q = [
+            ("actor", actor.to_string()),
+            ("limit", limit.to_string()),
+            ("filter", "posts_with_replies".to_string()),
+        ];
+        let (entries, _) = self.feed_page("app.bsky.feed.getAuthorFeed", &q).await?;
+        Ok(entries.iter().map(FeedEntry::to_post).collect())
+    }
+
     /// One page of your home timeline (accounts you follow), newest first, plus the
     /// cursor for the next page (empty when there is none).
     pub async fn get_timeline(

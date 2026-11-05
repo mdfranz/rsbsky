@@ -42,6 +42,13 @@ DEFAULT_LOGIN = {"method": "POST", "path": "/xrpc/com.atproto.server.createSessi
                  "body": {"accessJwt": "TOKEN", "did": "did:me", "handle": "me.test"}}
 
 
+class QuietServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        pass  # clients that abort mid-request are expected (the TUI cancels tasks on quit)
+
+
 class FakePDS:
     def __init__(self, routes):
         self.routes = ([] if any(r.get("method") == "POST" and r["path"].endswith("createSession") for r in routes)
@@ -89,7 +96,7 @@ class FakePDS:
 
             do_GET = do_POST = handle_any
 
-        self.srv = ThreadingHTTPServer(("127.0.0.1", 0), H)
+        self.srv = QuietServer(("127.0.0.1", 0), H)
         self.url = "http://127.0.0.1:%d" % self.srv.server_address[1]
         threading.Thread(target=lambda: self.srv.serve_forever(poll_interval=0.01), daemon=True).start()
 

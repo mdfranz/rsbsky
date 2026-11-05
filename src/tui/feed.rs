@@ -14,8 +14,10 @@ use std::time::{Duration, Instant};
 use chrono::{DateTime, Utc};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
+use super::detail::PLine;
+use super::picker::{PickLink, post_links};
 use super::theme::Theme;
-use crate::bsky::FeedItem;
+use crate::bsky::{FeedItem, Post, Profile};
 use crate::store::AuditEvent;
 use crate::termtext::{clip, collapse_ws};
 
@@ -31,6 +33,12 @@ pub const ANIM_TICK: Duration = Duration::from_millis(80);
 pub const PREVIEW_LINES: usize = 3;
 /// Lines of a quoted post shown in the list.
 pub const QUOTE_LINES: usize = 2;
+/// Spinner frames (shown while profiles, posts or the timeline load).
+pub const SPINNER: [&str; 8] = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
+/// Recent posts fetched for the author panel.
+pub const RECENT_POSTS: usize = 5;
+/// Gap between the profile and post panels.
+pub const PANEL_GAP: i64 = 4;
 /// Items closer than this to the end of the list trigger loading the next page.
 const LOAD_MORE_WITHIN: usize = 8;
 
@@ -87,6 +95,22 @@ pub enum Msg {
     Resize(u16, u16),
     /// Writing the audit log failed.
     AuditFailed(String),
+    /// A profile requested with [`Effect::FetchProfile`].
+    Profile {
+        did: String,
+        result: Result<Box<Profile>, String>,
+    },
+    /// The author's recent posts requested with [`Effect::FetchProfile`].
+    Posts {
+        did: String,
+        result: Result<Vec<Post>, String>,
+    },
+    /// A browser launch requested with [`Effect::Open`] finished.
+    OpenDone {
+        result: Result<(), String>,
+        status: String,
+        err_prefix: &'static str,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -103,7 +127,31 @@ pub enum Effect {
     /// Send [`Msg::AnimTick`] after [`ANIM_TICK`].
     ScheduleAnim,
     Audit(Box<AuditEvent>),
+    /// Fetch the profile and recent posts of `did` (results: [`Msg::Profile`], [`Msg::Posts`]).
+    FetchProfile {
+        did: String,
+    },
+    /// Open `urls` in the browser; the runtime answers with [`Msg::OpenDone`].
+    Open {
+        urls: Vec<String>,
+        status: String,
+        err_prefix: &'static str,
+    },
     Quit,
+}
+
+/// A profile that is loading or has loaded.
+#[derive(Debug, Clone)]
+pub enum ProfileSlot {
+    Loading,
+    Loaded(Box<Profile>),
+}
+
+/// An author's recent posts, loading or loaded.
+#[derive(Debug, Clone)]
+pub enum PostsSlot {
+    Loading,
+    Loaded(Vec<Post>),
 }
 
 /// Cached wrapped text of one list item at one width.
@@ -146,6 +194,15 @@ pub struct FeedApp {
     pub in_post: bool,
     pub composing: bool,
     pub busy: bool,
+
+    // detail view
+    pub profiles: HashMap<String, ProfileSlot>,
+    pub posts: HashMap<String, PostsSlot>,
+    /// Right-panel scroll offset.
+    pub scroll: usize,
+    /// The link picker, while open.
+    pub picking: Option<Vec<PickLink>>,
+    pub pick_index: usize,
 
     pub status: String,
     pub err: Option<String>,
@@ -192,6 +249,11 @@ impl FeedApp {
             in_post: false,
             composing: false,
             busy: false,
+            profiles: HashMap::new(),
+            posts: HashMap::new(),
+            scroll: 0,
+            picking: None,
+            pick_index: 0,
             status: String::new(),
             err: None,
             width: 0,
@@ -221,7 +283,23 @@ impl FeedApp {
 
     /// Whether a spinner is on screen (so the runtime keeps its timer running).
     pub fn needs_spin(&self) -> bool {
-        self.follow_loading
+        if self.follow_loading || self.busy {
+            return true;
+        }
+        if let Some(p) = self
+            .items
+            .get(self.cur)
+            .map(|i| &i.author.did)
+            .filter(|_| self.in_post)
+        {
+            return !matches!(self.profiles.get(p), Some(ProfileSlot::Loaded(_)))
+                || !matches!(self.posts.get(p), Some(PostsSlot::Loaded(_)));
+        }
+        false
+    }
+
+    pub fn spinner(&self) -> &'static str {
+        SPINNER[self.spin_frame % SPINNER.len()]
     }
 
     // ------------------------------------------------------------------ layout
@@ -235,15 +313,26 @@ impl FeedApp {
     }
 
     pub fn hint_items(&self) -> Vec<String> {
-        [
-            "↑ ↓ move",
-            "PgUp PgDn page",
-            "Home End",
-            "R refresh",
-            "q quit",
-        ]
-        .map(String::from)
-        .to_vec()
+        if self.picking.is_some() {
+            return ["↑ ↓ select", "enter open", "esc cancel"]
+                .map(String::from)
+                .to_vec();
+        }
+        let mut items: Vec<&str> = if self.in_post {
+            vec!["↑ ↓ prev/next", "PgUp PgDn scroll", "esc back"]
+        } else {
+            vec!["↑ ↓ move", "→ post"]
+        };
+        items.push("enter/o open link");
+        if self
+            .items
+            .get(self.cur)
+            .is_some_and(|i| !i.post.images.is_empty())
+        {
+            items.push("i open images");
+        }
+        items.extend(["R refresh", "q quit"]);
+        items.into_iter().map(String::from).collect()
     }
 
     pub fn hint_lines(&self) -> Vec<String> {
@@ -324,9 +413,77 @@ impl FeedApp {
 
     // ------------------------------------------------------------------ input
 
+    // ------------------------------------------------------------------ detail layout
+
+    /// Widths of the profile and post panels, and whether they are stacked (narrow terminals).
+    pub fn panel_widths(&self) -> (i64, i64, bool) {
+        let w = if self.width == 0 {
+            110
+        } else {
+            self.width as i64
+        };
+        if w < 96 {
+            return (w - 2, w - 2, true);
+        }
+        // The profile gets 40% (at least 44, at most 80 columns); the posts take the rest.
+        let l = (w * 2 / 5).clamp(44, 80);
+        (l, w - l - PANEL_GAP, false)
+    }
+
+    /// Scrollable lines of the right-hand panel (empty outside the detail view).
+    pub fn right_lines(&self, now: Now) -> Vec<PLine> {
+        if self.in_post && self.cur < self.items.len() {
+            let (_, rw, _) = self.panel_widths();
+            return self.post_right(rw, now);
+        }
+        Vec::new()
+    }
+
+    /// Height of the scrollable posts area; when stacked, what remains below the profile.
+    pub fn right_avail(&self, now: Now) -> usize {
+        let (lw, _, stacked) = self.panel_widths();
+        if !stacked {
+            return self.avail();
+        }
+        (self.avail() as i64 - self.profile_panel(lw, "", now).len() as i64 - 1).max(3) as usize
+    }
+
+    fn clamp_scroll(&mut self, now: Now) {
+        let max = self
+            .right_lines(now)
+            .len()
+            .saturating_sub(self.right_avail(now));
+        self.scroll = self.scroll.min(max);
+    }
+
+    /// Profile and recent posts for the current and next post's author (detail view only).
+    pub fn prefetch(&mut self) -> Vec<Effect> {
+        if !self.in_post {
+            return Vec::new();
+        }
+        let mut effects = Vec::new();
+        for i in self.cur..=self.cur + 1 {
+            let Some(did) = self.items.get(i).map(|it| it.author.did.clone()) else {
+                break;
+            };
+            if self.profiles.contains_key(&did) {
+                continue;
+            }
+            self.profiles.insert(did.clone(), ProfileSlot::Loading);
+            self.posts.insert(did.clone(), PostsSlot::Loading);
+            effects.push(Effect::FetchProfile { did });
+        }
+        effects
+    }
+
+    // ------------------------------------------------------------------ input
+
     pub fn on_key(&mut self, key: KeyEvent, now: Now) -> Vec<Effect> {
         if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
             return vec![Effect::Quit];
+        }
+        if self.picking.is_some() {
+            return self.pick_key(key.code);
         }
         if key
             .modifiers
@@ -336,30 +493,129 @@ impl FeedApp {
         }
         match key.code {
             KeyCode::Char('q') => return vec![Effect::Quit],
-            KeyCode::Char('R') => return self.refresh_key(now),
+            KeyCode::Char('R') => {
+                let mut effects = self.refresh_key(now);
+                effects.extend(self.prefetch());
+                return effects;
+            }
             _ => {}
         }
         if self.busy {
             return Vec::new();
         }
+        let page = self.right_avail(now).saturating_sub(2).max(1);
         let rows = (self.avail() / (PREVIEW_LINES + 2)).max(1);
         let last = self.items.len().saturating_sub(1);
         let target = match key.code {
             KeyCode::Up => Some(self.cur.saturating_sub(1)),
             KeyCode::Down => Some(self.cur + 1),
-            KeyCode::PageUp => Some(self.cur.saturating_sub(rows)),
-            KeyCode::PageDown => Some(self.cur + rows),
             KeyCode::Home => Some(0),
             KeyCode::End => Some(last),
+            KeyCode::PageUp if self.in_post => {
+                self.scroll = self.scroll.saturating_sub(page);
+                self.clamp_scroll(now);
+                return Vec::new();
+            }
+            KeyCode::PageDown if self.in_post => {
+                self.scroll += page;
+                self.clamp_scroll(now);
+                return Vec::new();
+            }
+            KeyCode::PageUp => Some(self.cur.saturating_sub(rows)),
+            KeyCode::PageDown => Some(self.cur + rows),
+            KeyCode::Left if self.in_post => Some(self.cur.saturating_sub(1)),
+            KeyCode::Right if self.in_post => Some(self.cur + 1),
+            KeyCode::Right => {
+                if !self.items.is_empty() {
+                    self.in_post = true;
+                    self.scroll = 0;
+                }
+                None
+            }
+            KeyCode::Enter | KeyCode::Char('o') => {
+                self.open_key();
+                None
+            }
+            KeyCode::Char('i') => return self.open_images(),
+            KeyCode::Esc | KeyCode::Backspace => {
+                self.in_post = false;
+                self.scroll = 0;
+                self.ensure_visible();
+                None
+            }
             _ => None,
         };
         if let Some(i) = target {
             self.cur = i.min(last);
+            self.scroll = 0;
             self.status.clear();
             self.err = None;
             self.ensure_visible();
         }
-        self.maybe_load_more()
+        let mut effects = self.maybe_load_more();
+        effects.extend(self.prefetch());
+        self.clamp_scroll(now);
+        effects
+    }
+
+    /// `o` / Enter: offer the selected post's links.
+    fn open_key(&mut self) {
+        let Some(it) = self.items.get(self.cur) else {
+            return;
+        };
+        let links = post_links(it);
+        if links.is_empty() {
+            self.status = "nothing to open".into();
+            return;
+        }
+        self.picking = Some(links);
+        self.pick_index = 0;
+        self.status.clear();
+        self.err = None;
+    }
+
+    /// `i`: open the selected post's images in the browser.
+    fn open_images(&mut self) -> Vec<Effect> {
+        let urls = self
+            .items
+            .get(self.cur)
+            .map(|it| it.post.images.clone())
+            .unwrap_or_default();
+        if urls.is_empty() {
+            self.status = "this post has no images".into();
+            return Vec::new();
+        }
+        let status = format!("opened {} image(s) in your browser", urls.len());
+        vec![Effect::Open {
+            urls,
+            status,
+            err_prefix: "open image",
+        }]
+    }
+
+    /// Navigates the picker and opens the highlighted link.
+    fn pick_key(&mut self, code: KeyCode) -> Vec<Effect> {
+        let Some(links) = &self.picking else {
+            return Vec::new();
+        };
+        match code {
+            KeyCode::Up | KeyCode::Left => self.pick_index = self.pick_index.saturating_sub(1),
+            KeyCode::Down | KeyCode::Right => {
+                self.pick_index = (self.pick_index + 1).min(links.len() - 1)
+            }
+            KeyCode::Enter | KeyCode::Char('o') => {
+                let link = links[self.pick_index].clone();
+                self.picking = None;
+                return vec![Effect::Open {
+                    urls: vec![link.url],
+                    status: format!("opened {}", link.label),
+                    err_prefix: "open link",
+                }];
+            }
+            KeyCode::Esc | KeyCode::Backspace => self.picking = None,
+            _ => {}
+        }
+        Vec::new()
     }
 
     /// `R` jumps to the top, where new posts land: insert what the header announced, or
@@ -368,6 +624,7 @@ impl FeedApp {
         self.cur = 0;
         self.list_top = 0;
         self.in_post = false;
+        self.scroll = 0;
         if !self.new_posts.is_empty() {
             return self.apply_pending(now);
         }
@@ -457,7 +714,9 @@ impl FeedApp {
         }
         self.new_gap = false;
         self.ensure_visible();
-        self.schedule_anim()
+        let mut effects = self.schedule_anim();
+        effects.extend(self.prefetch());
+        effects
     }
 
     fn schedule_anim(&mut self) -> Vec<Effect> {
@@ -498,6 +757,7 @@ impl FeedApp {
                 self.width = w;
                 self.height = h;
                 self.ensure_visible();
+                self.clamp_scroll(now);
                 Vec::new()
             }
             Msg::SpinTick => {
@@ -517,6 +777,43 @@ impl FeedApp {
                 self.schedule_anim()
             }
             Msg::RefreshTick => self.start_check(false),
+            Msg::Profile { did, result } => {
+                match result {
+                    Ok(p) => {
+                        self.profiles.insert(did, ProfileSlot::Loaded(p));
+                    }
+                    Err(e) => {
+                        self.profiles.remove(&did);
+                        self.err = Some(e);
+                    }
+                }
+                self.clamp_scroll(now);
+                Vec::new()
+            }
+            Msg::Posts { did, result } => {
+                match result {
+                    Ok(p) => {
+                        self.posts.insert(did, PostsSlot::Loaded(p));
+                    }
+                    Err(e) => {
+                        self.posts.remove(&did);
+                        self.err = Some(e);
+                    }
+                }
+                self.clamp_scroll(now);
+                Vec::new()
+            }
+            Msg::OpenDone {
+                result,
+                status,
+                err_prefix,
+            } => {
+                match result {
+                    Ok(()) => self.status = status,
+                    Err(e) => self.err = Some(format!("{err_prefix}: {e}")),
+                }
+                Vec::new()
+            }
             Msg::Page { id, result } => {
                 if self.page_req != Some(id) {
                     return Vec::new(); // stale: superseded or already answered
@@ -532,7 +829,7 @@ impl FeedApp {
                         self.ensure_visible();
                     }
                 }
-                Vec::new()
+                self.prefetch()
             }
             Msg::Check { id, manual, result } => {
                 if self.check_req != Some(id) {
@@ -609,6 +906,7 @@ impl FeedApp {
                 self.cur = 0;
                 self.list_top = 0;
                 self.in_post = false;
+                self.scroll = 0;
             }
             return self.apply_pending(now);
         }
@@ -1267,5 +1565,348 @@ mod tests {
         assert_eq!(wrap_items(&items, 100), ["aaaa · bbbb · cccc"]);
         assert_eq!(wrap_items(&items, 12), ["aaaa  bbbb", "cccc"]);
         assert_eq!(wrap_items(&items, 0), ["aaaa · bbbb · cccc"]);
+    }
+
+    // ---------------------------------------------------------------- detail view
+
+    fn with_authors(n: usize) -> FeedApp {
+        let mut a = loaded(n);
+        for (i, it) in a.items.iter_mut().enumerate() {
+            it.author.did = format!("did:a{i}");
+        }
+        a
+    }
+
+    fn fetches(eff: &[Effect]) -> Vec<String> {
+        eff.iter()
+            .filter_map(|e| {
+                if let Effect::FetchProfile { did } = e {
+                    Some(did.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn right_opens_detail_and_prefetches_this_and_the_next_author_once() {
+        let mut a = with_authors(5);
+        let now = Now::current();
+        let eff = a.on_key(key(KeyCode::Right), now);
+        assert!(a.in_post);
+        assert_eq!(fetches(&eff), ["did:a0", "did:a1"]);
+        assert!(a.needs_spin(), "profile and posts are loading");
+        assert!(
+            fetches(&a.on_key(key(KeyCode::Down), now)) == ["did:a2"],
+            "only the new neighbour is fetched"
+        );
+        assert!(
+            fetches(&a.on_key(key(KeyCode::Up), now)).is_empty(),
+            "already requested"
+        );
+        a.on_key(key(KeyCode::Esc), now);
+        assert!(!a.in_post);
+        assert!(
+            fetches(&a.on_key(key(KeyCode::Down), now)).is_empty(),
+            "no prefetch from the list"
+        );
+    }
+
+    #[test]
+    fn detail_navigation_steps_through_posts_and_resets_scroll() {
+        let mut a = with_authors(5);
+        let now = Now::current();
+        a.on_key(key(KeyCode::Right), now);
+        a.scroll = 3;
+        a.on_key(key(KeyCode::Right), now);
+        assert_eq!((a.cur, a.scroll), (1, 0));
+        a.on_key(key(KeyCode::Left), now);
+        assert_eq!(a.cur, 0);
+        a.on_key(key(KeyCode::Left), now);
+        assert_eq!(a.cur, 0, "clamped at the first post");
+        a.on_key(key(KeyCode::Down), now);
+        a.on_key(key(KeyCode::Down), now);
+        assert_eq!(a.cur, 2);
+        a.on_key(key(KeyCode::End), now);
+        assert_eq!(a.cur, 4);
+        a.on_key(key(KeyCode::Backspace), now);
+        assert!(!a.in_post && a.cur == 4, "the cursor stays where it was");
+        a.on_key(key(KeyCode::Right), now);
+        a.on_key(key(KeyCode::Right), now);
+        assert!(
+            a.in_post && a.cur == 4,
+            "Right on an empty list tail stays put"
+        );
+    }
+
+    #[test]
+    fn right_with_no_posts_does_nothing() {
+        let mut a = app();
+        a.follow_loading = false;
+        a.on_key(key(KeyCode::Right), Now::current());
+        assert!(!a.in_post);
+    }
+
+    #[test]
+    fn profile_and_posts_results_fill_the_slots_and_errors_allow_a_retry() {
+        let mut a = with_authors(3);
+        let now = Now::current();
+        a.on_key(key(KeyCode::Right), now);
+        let p = Profile {
+            did: "did:a0".into(),
+            handle: "full.test".into(),
+            ..Default::default()
+        };
+        a.on_msg(
+            Msg::Profile {
+                did: "did:a0".into(),
+                result: Ok(Box::new(p)),
+            },
+            now,
+        );
+        a.on_msg(
+            Msg::Posts {
+                did: "did:a0".into(),
+                result: Ok(vec![]),
+            },
+            now,
+        );
+        assert_eq!(
+            a.subject().unwrap().handle,
+            "full.test",
+            "the fetched profile replaces the summary"
+        );
+        assert!(
+            matches!(a.profiles.get("did:a1"), Some(ProfileSlot::Loading)),
+            "the neighbour is still in flight"
+        );
+        assert!(
+            !a.needs_spin(),
+            "the author on screen is fully loaded, so no spinner"
+        );
+        a.on_msg(
+            Msg::Profile {
+                did: "did:a1".into(),
+                result: Err("boom".into()),
+            },
+            now,
+        );
+        assert_eq!(a.err.as_deref(), Some("boom"));
+        assert!(
+            !a.profiles.contains_key("did:a1"),
+            "removed so it can be requested again"
+        );
+        let eff = a.on_key(key(KeyCode::Down), now);
+        assert_eq!(
+            fetches(&eff),
+            ["did:a1", "did:a2"],
+            "the failed author is retried on the next move"
+        );
+    }
+
+    #[test]
+    fn page_down_scrolls_only_in_detail_and_is_clamped() {
+        let mut a = with_authors(4);
+        a.height = 20;
+        let now = Now::current();
+        a.on_key(key(KeyCode::PageDown), now);
+        assert!(
+            a.cur > 0 && !a.in_post,
+            "in the list PgDn moves the selection"
+        );
+        a.cur = 0;
+        a.on_key(key(KeyCode::Right), now);
+        a.on_key(key(KeyCode::PageDown), now);
+        assert_eq!(a.cur, 0);
+        let max = a.right_lines(now).len().saturating_sub(a.right_avail(now));
+        assert!(a.scroll <= max);
+        for _ in 0..20 {
+            a.on_key(key(KeyCode::PageDown), now);
+        }
+        assert_eq!(a.scroll, max);
+        a.on_key(key(KeyCode::PageUp), now);
+        assert!(a.scroll < max || max == 0);
+        for _ in 0..20 {
+            a.on_key(key(KeyCode::PageUp), now);
+        }
+        assert_eq!(a.scroll, 0);
+    }
+
+    fn open_urls(eff: &[Effect]) -> Vec<(Vec<String>, String, &'static str)> {
+        eff.iter()
+            .filter_map(|e| match e {
+                Effect::Open {
+                    urls,
+                    status,
+                    err_prefix,
+                } => Some((urls.clone(), status.clone(), *err_prefix)),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn picker_opens_the_chosen_link_through_an_effect() {
+        let mut a = with_authors(2);
+        a.items[0].post.text = "read https://example.com/x".into();
+        let now = Now::current();
+        a.on_key(key(KeyCode::Enter), now);
+        let links = a.picking.clone().expect("picker open");
+        assert_eq!(links[0].label, "post on bsky.app");
+        assert_eq!(links[1].url, "https://example.com/x");
+        a.on_key(key(KeyCode::Down), now);
+        a.on_key(key(KeyCode::Down), now);
+        a.on_key(key(KeyCode::Down), now);
+        assert_eq!(a.pick_index, links.len() - 1, "clamped to the last link");
+        a.on_key(key(KeyCode::Up), now);
+        a.on_key(key(KeyCode::Up), now);
+        a.on_key(key(KeyCode::Up), now);
+        assert_eq!(a.pick_index, 0);
+        a.on_key(key(KeyCode::Right), now);
+        let eff = a.on_key(key(KeyCode::Enter), now);
+        assert!(a.picking.is_none());
+        assert_eq!(
+            open_urls(&eff),
+            [(
+                vec!["https://example.com/x".into()],
+                "opened example.com/x".into(),
+                "open link"
+            )]
+        );
+        // `o` opens the picker and, inside it, confirms too
+        a.on_key(key(KeyCode::Char('o')), now);
+        let eff = a.on_key(key(KeyCode::Char('o')), now);
+        assert_eq!(open_urls(&eff)[0].1, "opened post on bsky.app");
+    }
+
+    #[test]
+    fn picker_swallows_navigation_keys_and_esc_closes_it() {
+        let mut a = with_authors(3);
+        let now = Now::current();
+        a.on_key(key(KeyCode::Char('o')), now);
+        a.on_key(key(KeyCode::Char('q')), now);
+        assert!(a.picking.is_some(), "q does not quit the picker");
+        assert!(
+            a.on_key(key(KeyCode::Char('R')), now).is_empty(),
+            "R is ignored while picking"
+        );
+        a.on_key(key(KeyCode::PageDown), now);
+        assert_eq!(a.cur, 0, "list keys do not leak through");
+        assert_eq!(
+            a.on_key(
+                KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+                now
+            ),
+            [Effect::Quit]
+        );
+        a.on_key(key(KeyCode::Esc), now);
+        assert!(a.picking.is_none());
+        assert_eq!(
+            a.hint_items(),
+            [
+                "↑ ↓ move",
+                "→ post",
+                "enter/o open link",
+                "R refresh",
+                "q quit"
+            ]
+        );
+    }
+
+    #[test]
+    fn nothing_to_open_without_a_selected_post() {
+        let mut a = app();
+        a.follow_loading = false;
+        a.on_key(key(KeyCode::Enter), Now::current());
+        assert!(a.picking.is_none());
+        let mut b = loaded(1);
+        b.items[0] = FeedItem::default();
+        b.on_key(key(KeyCode::Enter), Now::current());
+        assert_eq!(b.status, "nothing to open");
+    }
+
+    #[test]
+    fn i_opens_all_images_or_says_there_are_none() {
+        let mut a = loaded(2);
+        let now = Now::current();
+        assert!(a.on_key(key(KeyCode::Char('i')), now).is_empty());
+        assert_eq!(a.status, "this post has no images");
+        assert!(!a.hint_items().iter().any(|h| h == "i open images"));
+        a.items[0].post.images = vec!["https://cdn/1".into(), "https://cdn/2".into()];
+        assert!(a.hint_items().iter().any(|h| h == "i open images"));
+        let eff = a.on_key(key(KeyCode::Char('i')), now);
+        assert_eq!(
+            open_urls(&eff),
+            [(
+                vec!["https://cdn/1".into(), "https://cdn/2".into()],
+                "opened 2 image(s) in your browser".into(),
+                "open image"
+            )]
+        );
+    }
+
+    #[test]
+    fn open_results_set_status_or_error() {
+        let mut a = loaded(1);
+        let now = Now::current();
+        a.on_msg(
+            Msg::OpenDone {
+                result: Ok(()),
+                status: "opened x".into(),
+                err_prefix: "open link",
+            },
+            now,
+        );
+        assert_eq!(a.status, "opened x");
+        a.on_msg(
+            Msg::OpenDone {
+                result: Err("no such file".into()),
+                status: "unused".into(),
+                err_prefix: "open image",
+            },
+            now,
+        );
+        assert_eq!(a.err.as_deref(), Some("open image: no such file"));
+    }
+
+    #[test]
+    fn new_posts_are_held_while_a_post_is_open_and_r_closes_it() {
+        let mut a = with_authors(4);
+        let now = Now::current();
+        a.on_key(key(KeyCode::Right), now);
+        let id = check_id(&a.on_msg(Msg::RefreshTick, now));
+        a.on_msg(
+            Msg::Check {
+                id,
+                manual: false,
+                result: Ok(outcome(&["n"], false)),
+            },
+            now,
+        );
+        assert_eq!(
+            (a.items.len(), a.new_posts.len(), a.cur, a.in_post),
+            (4, 1, 0, true),
+            "reading a post: nothing moves"
+        );
+        a.scroll = 2;
+        let eff = a.on_key(key(KeyCode::Char('R')), now);
+        assert!(!a.in_post && a.scroll == 0 && a.cur == 0);
+        assert_eq!((a.items.len(), a.new_posts.len()), (5, 0));
+        assert!(a.status.contains("1 new post"));
+        assert!(fetches(&eff).is_empty(), "list view prefetches nothing");
+    }
+
+    #[test]
+    fn loading_more_continues_while_stepping_through_posts() {
+        let mut a = with_authors(12);
+        let now = Now::current();
+        a.on_key(key(KeyCode::Right), now);
+        a.cur = 3;
+        let eff = a.on_key(key(KeyCode::Right), now);
+        assert!(
+            eff.iter()
+                .any(|e| matches!(e, Effect::LoadPage { cursor, .. } if cursor == "next"))
+        );
     }
 }

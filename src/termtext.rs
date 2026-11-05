@@ -1,6 +1,9 @@
 //! Terminal-safe text helpers (port of Go `internal/termtext`, the parts Phase 0-1 need).
 
+use std::sync::OnceLock;
+
 use chrono::Duration;
+use regex::Regex;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 /// Single-width media markers.
@@ -157,66 +160,244 @@ fn rune_width(c: char) -> usize {
     }
 }
 
-/// Word-wraps `text` to `width` columns (minimum 8). A word longer than a line is split
-/// across lines; newlines in `text` are kept. Plain text only: the list view discards
-/// hyperlinks, so OSC 8 is added elsewhere.
-pub fn wrap(text: &str, width: i64) -> Vec<String> {
+const URL_TRAILING: &str = ".,;:!?)]}\"'";
+
+/// URLs and bare domains with a common TLD (Go `linkRe`). Stops at whitespace and ESC.
+fn link_re() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        Regex::new(concat!(
+            r"(?i)(?:https?://[^\t\n\x0c\r \x1b]+|(?-u:\b)[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.",
+            r"(?:com|org|net|io|app|dev|ai|co|me|xyz|social|blog|info|tv|ly|edu|gov|uk|de|fr|ca|au)",
+            r"(?-u:\b)(?:/[^\t\n\x0c\r \x1b]*)?)"
+        ))
+        .expect("link regex")
+    })
+}
+
+fn http_re() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"https?://[^\t\n\x0c\r \x1b]+").expect("http regex"))
+}
+
+fn mention_re() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        Regex::new(r"(?i)(?:^|[^A-Za-z0-9_@])@([a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)+)")
+            .expect("mention regex")
+    })
+}
+
+fn url_target(url: &str) -> String {
+    if url.to_lowercase().starts_with("http") {
+        url.to_string()
+    } else {
+        format!("https://{url}")
+    }
+}
+
+/// The http(s) URLs in plain text, without trailing punctuation.
+pub fn find_urls(s: &str) -> Vec<String> {
+    http_re()
+        .find_iter(s)
+        .map(|m| {
+            m.as_str()
+                .trim_end_matches(|c| URL_TRAILING.contains(c))
+                .to_string()
+        })
+        .collect()
+}
+
+/// Handles of `@handle.domain` mentions in text (without the `@`).
+pub fn find_mentions(s: &str) -> Vec<String> {
+    mention_re()
+        .captures_iter(s)
+        .map(|c| c[1].to_string())
+        .collect()
+}
+
+/// A hyperlink over `len` display columns starting at `col` of a line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LinkSpan {
+    pub col: usize,
+    pub len: usize,
+    pub url: String,
+}
+
+/// One wrapped line and the links in it.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct WrapLine {
+    pub text: String,
+    pub links: Vec<LinkSpan>,
+}
+
+impl WrapLine {
+    /// The line with OSC 8 escapes inserted (Go's `Wrap` output format).
+    pub fn to_osc(&self) -> String {
+        let mut out = String::new();
+        let mut col = 0;
+        let mut links = self.links.iter().peekable();
+        let mut chunk = String::new();
+        let flush_to = |out: &mut String, chunk: &mut String| {
+            out.push_str(chunk);
+            chunk.clear();
+        };
+        let chars: Vec<char> = self.text.chars().collect();
+        let mut i = 0;
+        while i < chars.len() {
+            if let Some(l) = links.peek().filter(|l| l.col == col) {
+                flush_to(&mut out, &mut chunk);
+                let (mut w, mut text) = (0, String::new());
+                while i < chars.len() && w < l.len {
+                    w += chars[i].width().unwrap_or(0);
+                    text.push(chars[i]);
+                    i += 1;
+                }
+                // zero-width characters directly after the span belong to it
+                while i < chars.len() && chars[i].width().unwrap_or(0) == 0 && w >= l.len {
+                    text.push(chars[i]);
+                    i += 1;
+                }
+                col += w;
+                out.push_str(&format!("\x1b]8;;{}\x1b\\{}\x1b]8;;\x1b\\", l.url, text));
+                links.next();
+                continue;
+            }
+            chunk.push(chars[i]);
+            col += chars[i].width().unwrap_or(0);
+            i += 1;
+        }
+        flush_to(&mut out, &mut chunk);
+        out
+    }
+}
+
+struct Piece {
+    text: String,
+    target: Option<String>,
+}
+
+/// Splits a word into plain and URL pieces (URLs carry their target).
+fn split_word(word: &str) -> Vec<Piece> {
+    let mut out = Vec::new();
+    let mut pos = 0;
+    for m in link_re().find_iter(word) {
+        let (mut start, end) = (m.start(), m.end());
+        let url = word[start..end].trim_end_matches(|c| URL_TRAILING.contains(c));
+        let mut target = url_target(url);
+        let mut text = url.to_string();
+        if start > 0 && word.as_bytes()[start - 1] == b'@' && !url.contains('/') {
+            // an @mention: link to the profile and keep the @ in the link text
+            start -= 1;
+            text = format!("@{url}");
+            target = format!("https://bsky.app/profile/{url}");
+        }
+        if start > pos {
+            out.push(Piece {
+                text: word[pos..start].to_string(),
+                target: None,
+            });
+        }
+        out.push(Piece {
+            text,
+            target: Some(target),
+        });
+        let tail = &word[m.start() + url.len()..end];
+        if !tail.is_empty() {
+            out.push(Piece {
+                text: tail.to_string(),
+                target: None,
+            });
+        }
+        pos = end;
+    }
+    if pos < word.len() {
+        out.push(Piece {
+            text: word[pos..].to_string(),
+            target: None,
+        });
+    }
+    out
+}
+
+/// Word-wraps `text` to `width` columns (minimum 8). URLs are never shortened: one too long
+/// for a line is split across lines and every fragment links to the full URL. Newlines in
+/// `text` are kept. Remote controls are stripped first.
+pub fn wrap_linked(text: &str, width: i64) -> Vec<WrapLine> {
     let width = width.max(8) as usize;
     let text = sanitize(text);
-    let mut lines = Vec::new();
+    let mut lines: Vec<WrapLine> = Vec::new();
     for para in text.split('\n') {
         let words = glue_prefixes(para.split_whitespace().collect());
         if words.is_empty() {
-            lines.push(String::new());
+            lines.push(WrapLine::default());
             continue;
         }
-        let mut cur = String::new();
+        let mut cur = WrapLine::default();
         let mut cur_w = 0usize;
         for word in &words {
-            let word_w = word.width();
+            let pieces = split_word(word);
+            let word_w: usize = pieces.iter().map(|p| p.text.width()).sum();
             if cur_w > 0 && cur_w + 1 + word_w > width {
                 lines.push(std::mem::take(&mut cur));
                 cur_w = 0;
             }
             if cur_w > 0 {
-                cur.push(' ');
+                cur.text.push(' ');
                 cur_w += 1;
             }
-            let rs: Vec<char> = word.chars().collect();
-            let mut i = 0;
-            while i < rs.len() {
-                if cur_w >= width {
-                    lines.push(std::mem::take(&mut cur));
-                    cur_w = 0;
-                }
-                // take as many characters as still fit (zero-width ones stay attached)
-                let (mut j, mut w) = (i, 0);
-                while j < rs.len() {
-                    let rw = rune_width(rs[j]);
-                    if cur_w + w + rw > width {
-                        break;
-                    }
-                    w += rw;
-                    j += 1;
-                }
-                if j == i {
-                    // the next character does not fit in what is left of this line
-                    if cur_w > 0 {
+            for p in &pieces {
+                let rs: Vec<char> = p.text.chars().collect();
+                let mut i = 0;
+                while i < rs.len() {
+                    if cur_w >= width {
                         lines.push(std::mem::take(&mut cur));
                         cur_w = 0;
-                        continue;
                     }
-                    j = i + 1;
-                    w = rune_width(rs[i]);
+                    // take as many characters as still fit (zero-width ones stay attached)
+                    let (mut j, mut w) = (i, 0);
+                    while j < rs.len() {
+                        let rw = rune_width(rs[j]);
+                        if cur_w + w + rw > width {
+                            break;
+                        }
+                        w += rw;
+                        j += 1;
+                    }
+                    if j == i {
+                        // the next character does not fit in what is left of this line
+                        if cur_w > 0 {
+                            lines.push(std::mem::take(&mut cur));
+                            cur_w = 0;
+                            continue;
+                        }
+                        j = i + 1;
+                        w = rune_width(rs[i]);
+                    }
+                    if let Some(target) = &p.target {
+                        cur.links.push(LinkSpan {
+                            col: cur_w,
+                            len: w,
+                            url: target.clone(),
+                        });
+                    }
+                    cur.text.extend(&rs[i..j]);
+                    cur_w += w;
+                    i = j;
                 }
-                cur.extend(&rs[i..j]);
-                cur_w += w;
-                i = j;
             }
         }
         lines.push(cur);
     }
     lines
+}
+
+/// Plain-text wrapping (see [`wrap_linked`]).
+pub fn wrap(text: &str, width: i64) -> Vec<String> {
+    wrap_linked(text, width)
+        .into_iter()
+        .map(|l| l.text)
+        .collect()
 }
 
 /// Hard-wraps `text` to `w` columns keeping at most `n` lines; the last ends in `…` when
@@ -264,7 +445,7 @@ mod tests {
     fn wrap_and_clip_match_go() {
         let cases: Vec<serde_json::Value> =
             serde_json::from_str(include_str!("../tests/compat/wrap_cases.json")).unwrap();
-        assert!(cases.len() > 20);
+        assert!(cases.len() > 300);
         for c in cases {
             let (text, w, n) = (
                 c["text"].as_str().unwrap(),
@@ -279,6 +460,14 @@ mod tests {
                     .collect()
             };
             assert_eq!(wrap(text, w), want("wrap"), "wrap({text:?}, {w})");
+            let osc: Vec<String> = wrap_linked(text, w).iter().map(WrapLine::to_osc).collect();
+            assert_eq!(osc, want("osc"), "hyperlinks in wrap({text:?}, {w})");
+            assert_eq!(find_urls(text), want("urls"), "find_urls({text:?})");
+            assert_eq!(
+                find_mentions(text),
+                want("mentions"),
+                "find_mentions({text:?})"
+            );
             assert_eq!(clip(text, w, n), want("clip"), "clip({text:?}, {w}, {n})");
         }
     }

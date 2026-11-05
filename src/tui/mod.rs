@@ -1,7 +1,9 @@
 //! Terminal UI: themes, the Following feed view and its runtime.
 
+pub mod detail;
 pub mod feed;
 pub mod links;
+pub mod picker;
 pub mod render;
 pub mod runtime;
 pub mod theme;

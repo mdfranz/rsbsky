@@ -58,6 +58,21 @@ def timeline(n_first=50, n_second=10):
     return [tl(mk("a", n_first), limit="50", next="p2"), tl(mk("b", n_second), cursor="p2", limit="50")]
 
 
+def detail_routes():
+    """Profile and author-feed responses for the detail view, one route per author."""
+    routes = []
+    for i in range(7):
+        did = "did:u%d" % i
+        body = {"did": did, "handle": "user%d.test" % i, "displayName": "User Zero" if i == 0 else "User %d" % i,
+                "description": "Bio of user zero, see https://zero.example/home today.", "avatar": "https://cdn/av.jpg",
+                "createdAt": "{AGO:400d}", "followersCount": 1200, "followsCount": 300, "postsCount": 800,
+                "viewer": {"followedBy": "at://them/follow/1"}}
+        recent = [entry("r%d" % k, prof(did, "user%d.test" % i, "User %d" % i), "recent post number %d by this author" % k) for k in range(5)]
+        routes.append({"path": "/xrpc/app.bsky.actor.getProfile", "q": {"actor": did}, "body": body})
+        routes.append({"path": "/xrpc/app.bsky.feed.getAuthorFeed", "q": {"actor": did}, "body": {"feed": recent}})
+    return routes
+
+
 class Env:
     def __init__(self, routes, extra_env=None):
         self.tmp = tempfile.mkdtemp(prefix="tuicheck-")
@@ -254,6 +269,79 @@ def main():
         check("panic restored alternate screen and cursor", flag("#{alternate_on}") == "0" and flag("#{cursor_flag}") == "1")
         e.close()
 
+    # ---- 9b. post detail view: panels, navigation, picker, images, browser launch
+    log = tempfile.mktemp(prefix="browserlog-")
+    browser = tempfile.mktemp(prefix="fakebrowser-", suffix=".sh")
+    with open(browser, "w") as f:
+        f.write('#!/bin/sh\necho "$1" >> "%s"\n' % log)
+    os.chmod(browser, 0o755)
+    e = Env(timeline() + detail_routes(), {"BROWSER": browser})
+    start(e, binp, w=120, h=32)
+    wait_for(lambda: "User 0" in screen())
+    tmux("send-keys", "-t", "t", "Right")
+    check("Right opens the detail view with the profile loading", wait_for(lambda: "open profile" in screen()), screen())
+    check("the profile and recent posts load", wait_for(lambda: "Account age" in screen() and "Recent posts" in screen() and "recent post number 0" in screen(), 8), screen())
+    s = screen()
+    check("profile panel shows stats and the right panel shows the post", all(x in s for x in ["User Zero", "1 of 50", "Followers    1200", "Fol. ratio   4.0", "follows you", "Bio of user zero", "This post", "open post"]), s)
+    reqs = e.pds.trace
+    prof_reqs = [r for r in reqs if r["path"].endswith("getProfile")]
+    feed_reqs = [r for r in reqs if r["path"].endswith("getAuthorFeed")]
+    check("profile requested for this and the next author", sorted(r["query"]["actor"][0] for r in prof_reqs) == ["did:u0", "did:u1"], prof_reqs)
+    check("recent posts use posts_with_replies, limit 5", feed_reqs and all(r["query"].get("filter") == ["posts_with_replies"] and r["query"].get("limit") == ["5"] for r in feed_reqs), feed_reqs)
+    check("detail browsing only reads", all(r["method"] == "GET" or r["path"].endswith("createSession") for r in reqs))
+    tmux("send-keys", "-t", "t", "Down")
+    check("Down shows the next post", wait_for(lambda: "2 of 50" in screen()), screen())
+    tmux("send-keys", "-t", "t", "Up")
+    check("Up goes back", wait_for(lambda: "1 of 50" in screen()), screen())
+    tmux("send-keys", "-t", "t", "PageDown", "PageUp")
+    time.sleep(0.3)
+    check("page keys scroll without breaking the layout", "This post" in screen() or "Recent posts" in screen(), screen())
+    tmux("send-keys", "-t", "t", "i")
+    check("i without images says so", wait_for(lambda: "this post has no images" in screen()), screen())
+    tmux("send-keys", "-t", "t", "o")
+    check("o opens the link picker", wait_for(lambda: "open:" in screen() and "post on bsky.app" in screen()), screen())
+    check("picker hints replace the key hints", "enter open" in screen() and "esc cancel" in screen(), screen())
+    tmux("send-keys", "-t", "t", "Enter")
+    check("Enter launches $BROWSER with the post URL", wait_for(lambda: os.path.exists(log) and "bsky.app/profile/user0.test/post/a0" in open(log).read()), open(log).read() if os.path.exists(log) else "no log")
+    check("status says what was opened", wait_for(lambda: "opened post on bsky.app" in screen()), screen())
+    check("the browser's stdout cannot corrupt the screen", "This post" in screen())
+    tmux("send-keys", "-t", "t", "o", "Down", "Escape")
+    check("Esc closes the picker without opening", wait_for(lambda: "open:" not in screen()) and len(open(log).read().split()) == 1, screen())
+    tmux("send-keys", "-t", "t", "Escape")
+    check("Esc leaves the detail view", wait_for(lambda: "Account age" not in screen() and re.search(r"^▸ ", screen(), re.M) is not None), screen())
+    tmux("send-keys", "-t", "t", "Right")
+    wait_for(lambda: "Account age" in screen())
+    tmux("resize-window", "-t", "t", "-x", "70", "-y", "40")
+    check("narrow terminals stack the panels", wait_for(lambda: "q quit" in screen() and "Account age" in screen() and all(len(l) <= 70 for l in screen().splitlines())), screen())
+    tmux("send-keys", "-t", "t", "q")
+    wait_for(lambda: "EXIT=0" in screen())
+    check("quits cleanly from the detail view", "EXIT=0" in screen() and flag("#{alternate_on}") == "0")
+    e.close()
+
+    # image links: a post with images opens every one
+    img_entry = entry("img0", prof("did:u0", "user0.test", "User Zero"), "pics", embed=IMG_EMBED, view=IMG_VIEW)
+    e = Env([tl([img_entry], limit="50")] + detail_routes(), {"BROWSER": browser})
+    open(log, "w").close()
+    start(e, binp, w=120, h=32)
+    wait_for(lambda: "pics" in screen())
+    check("hint bar offers i for posts with images", "i open images" in screen(), screen())
+    tmux("send-keys", "-t", "t", "i")
+    check("i opens each image URL in the browser", wait_for(lambda: sorted(open(log).read().split()) == ["https://cdn/1.jpg", "https://cdn/2.jpg"]), open(log).read())
+    check("...and reports it", wait_for(lambda: "opened 2 image(s) in your browser" in screen()), screen())
+    tmux("send-keys", "-t", "t", "q")
+    e.close()
+    # a missing launcher is an error, not a crash
+    e = Env([tl([img_entry], limit="50")] + detail_routes(), {"BROWSER": "/nonexistent/browser"})
+    start(e, binp, w=120, h=32)
+    wait_for(lambda: "pics" in screen())
+    tmux("send-keys", "-t", "t", "i")
+    check("a failing launcher is shown as an error", wait_for(lambda: "error: open image:" in screen()), screen())
+    tmux("send-keys", "-t", "t", "q")
+    check("...and the app is still responsive", wait_for(lambda: "EXIT=0" in screen()), screen())
+    e.close()
+    os.remove(browser)
+    os.remove(log)
+
     # ---- 10. raw bytes: OSC 8 links, redraw/scroll, clean shutdown sequence
     raw_checks(binp)
 
@@ -263,7 +351,7 @@ def main():
 
 
 def raw_checks(binp):
-    e = Env(timeline())
+    e = Env(timeline() + detail_routes())
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 30, 100, 0, 0))
     env = dict(e.env)
@@ -285,6 +373,13 @@ def raw_checks(binp):
                 buf += chunk
         return buf
 
+    def read_until(pred, timeout=6.0):
+        buf = b""
+        end = time.time() + timeout
+        while time.time() < end and not pred(buf):
+            buf += read(0.2)
+        return buf
+
     first = read(2.0)
     check("startup does not query the terminal (no cursor-position request)", b"\x1b[6n" not in first, first[:200])
     post_links = re.findall(rb"\x1b\]8;;(https://bsky\.app/profile/[^\x1b]+)\x1b\\(.)\x1b\]8;;\x1b\\", first)
@@ -300,6 +395,15 @@ def raw_checks(binp):
     check("links are re-sent after scrolling", len(new_urls) >= 3, after[:200])
     # a plain re-print (cell that stopped being a link) exists after scrolling: a position printed without OSC 8
     check("every OSC 8 open is closed", after.count(b"\x1b]8;;\x1b\\") >= after.count(b"\x1b]8;;http"))
+    os.write(master, b"\x1b[C")  # Right: open the detail view
+    detail = read_until(lambda b: b"zero.example" in b and b"Recent posts" in b)
+    check("detail view links the profile", b"\x1b]8;;https://bsky.app/profile/user4.test\x1b\\o\x1b]8;;\x1b\\" in detail, detail[:300])
+    check("detail view links the post ('open post')", re.search(rb"\x1b\]8;;https://bsky\.app/profile/[^/]+/post/[a-z0-9]+\x1b\\o\x1b\]8;;\x1b\\", detail) is not None)
+    check("bio and text URLs are linked", b"\x1b]8;;https://zero.example/home" in detail, detail[-400:])
+    os.write(master, b"\x1b")  # Esc: back to the list
+    back = read(1.5)
+    check("leaving the detail view drops the profile and bio links", b"\x1b]8;;https://bsky.app/profile/user4.test\x1b\\" not in back and b"zero.example" not in back, back[:300])
+    check("...by re-printing the old link cells as plain text", b"\x1b[5;1H" in back or b"\x1b[4;1H" in back or b"\x1b[6;1H" in back, back[:300])
     os.write(master, b"q")
     tail = read(2.0)
     p.wait(timeout=5)
