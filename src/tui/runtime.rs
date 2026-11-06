@@ -6,6 +6,7 @@
 
 use std::collections::HashSet;
 use std::io::{self, Write};
+use std::mem::ManuallyDrop;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -115,19 +116,41 @@ async fn tick_or_pending(i: &mut Option<Interval>) {
     }
 }
 
+/// How long exit may wait for aborted tasks to unwind.
+const DRAIN_BUDGET: Duration = Duration::from_secs(1);
+
 /// Runs the feed UI until the user quits.
-pub async fn run(mut app: FeedApp, client: Client, audit: Audit) -> io::Result<()> {
+pub async fn run(app: FeedApp, client: Client, audit: Audit) -> io::Result<()> {
+    let mut tasks = JoinSet::new();
+    let result = event_loop(app, client, audit, &mut tasks).await;
+
+    // Outstanding requests must not keep the process alive or the terminal busy. Waiting for
+    // the aborts matters on every exit path: an open task span keeps the session span open,
+    // and whatever is still open when telemetry flushes is never exported.
+    tasks.abort_all();
+    let drained = async { while tasks.join_next().await.is_some() {} };
+    let _ = tokio::time::timeout(DRAIN_BUDGET, drained).await;
+    result
+}
+
+async fn event_loop(
+    mut app: FeedApp,
+    client: Client,
+    audit: Audit,
+    tasks: &mut JoinSet<()>,
+) -> io::Result<()> {
     let client = Arc::new(client);
     install_panic_hook();
     let _guard = TerminalGuard::enter()?;
-    let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
+    // Never dropped: `Terminal::drop` re-shows the cursor and `eprintln!`s if that fails, which
+    // panics when the terminal has gone away. `_guard` does the restoring, ignoring errors.
+    let mut terminal = ManuallyDrop::new(Terminal::new(CrosstermBackend::new(io::stdout()))?);
     // No terminal.clear(): it asks the terminal for the cursor position (ESC[6n) and fails
     // when the terminal does not answer. The alternate screen is already blank.
     let size = terminal.size()?;
     app.on_msg(Msg::Resize(size.width, size.height), Now::current());
 
     let (tx, mut rx) = mpsc::unbounded_channel::<Msg>();
-    let mut tasks: JoinSet<()> = JoinSet::new();
     let mut events = EventStream::new();
     let mut refresh = (!app.refresh.is_zero()).then(|| {
         let mut i = interval_at(Instant::now() + app.refresh, app.refresh);
@@ -343,7 +366,5 @@ pub async fn run(mut app: FeedApp, client: Client, audit: Audit) -> io::Result<(
         }
     }
 
-    // Outstanding requests must not keep the process alive or the terminal busy.
-    tasks.abort_all();
     Ok(())
 }

@@ -6,7 +6,8 @@ Verifies that with LOGFIRE_TOKEN set rsbsky exports spans, and, as importantly, 
   * never leaks credentials, handles, DIDs or post text,
   * never changes stdout / stderr / exit status of any command,
   * does not hang or print anything when the collector is unreachable,
-  * does not draw on the terminal while the TUI is running.
+  * does not draw on the terminal while the TUI is running,
+  * still closes its session when it ends mid-request or the terminal disappears.
 
   telemetry_check.py --bin target/debug/rsbsky
 """
@@ -213,6 +214,25 @@ def main():
         dead_screen = tui_run(binp, pds, dead, tmp())
         check("TUI with an unreachable collector still quits promptly", dead_screen["code"] == 0 and dead_screen["elapsed"] < 8, (dead_screen["code"], dead_screen["elapsed"]))
         check("...and prints nothing extra on screen", not re.search(rb"logfire|opentelemetry|\botel\b", dead_screen["bytes"], re.I), dead_screen["bytes"][:300])
+
+        # ---- 8. every way of ending a session must close it. `exit_code` is the signal: span
+        # names prove nothing, because a pending copy of each span is exported when it opens.
+        slow = [dict(r) for r in tui_timeline()]
+        slow[0]["delay"] = 20
+        slow_pds = FakePDS(slow + detail_routes() + list(TIMELINE))
+        for label, how, server, reps in [("q while idle", "q", pds, 1), ("q during a request", "q", slow_pds, 4),
+                                         ("SIGTERM during a request", "term", slow_pds, 4),
+                                         ("closing the terminal while idle", "hangup", pds, 2),
+                                         ("closing the terminal during a request", "hangup", slow_pds, 2)]:
+            for i in range(reps):
+                c = Collector()
+                code, elapsed = tui_end(binp, server, {"LOGFIRE_TOKEN": TOKEN, "LOGFIRE_BASE_URL": c.url}, tmp(), how)
+                time.sleep(0.5)
+                exported = b"exit_code" in c.traces()
+                c.close()
+                check("%s (%d/%d): exits 0, promptly, and exports the closed session" % (label, i + 1, reps),
+                      code == 0 and elapsed < 8 and exported, (code, elapsed, exported))
+        slow_pds.close()
     finally:
         pass
     finish(pds, col, tmps)
@@ -276,6 +296,55 @@ def tui_run(binp, pds, extra_env, tmp):
     err = p.stderr.read()
     os.close(master)
     return {"code": code, "bytes": buf + err, "elapsed": elapsed}
+
+
+def tui_end(binp, pds, extra_env, tmp, how):
+    """Ends a TUI session the way a real one ends: all three streams on a controlling pty, so
+    closing it delivers SIGHUP and leaves stderr dead. Returns (exit code, seconds to exit)."""
+    env = {"PATH": "/usr/bin:/bin", "HOME": tmp, "TZ": "UTC", "TERM": "xterm-256color", "BSKY_HANDLE": "me.test",
+           "BSKY_APP_PASSWORD": "pw", "BSKY_PDS": pds.url, "BSKYBAN_STATE": tmp + "/state.json",
+           "BSKYBAN_AUDIT": tmp + "/audit.jsonl"}
+    env.update(extra_env)
+    master, slave = pty.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 30, 100, 0, 0))
+
+    def controlling_tty():
+        os.setsid()
+        fcntl.ioctl(0, termios.TIOCSCTTY, 0)
+
+    p = subprocess.Popen([binp, "--refresh", "60s"], env=env, stdin=slave, stdout=slave, stderr=slave, close_fds=True,
+                         preexec_fn=controlling_tty)
+    os.close(slave)
+
+    def drain(sec):
+        end = time.time() + sec
+        while time.time() < end and p.poll() is None:
+            if select.select([master], [], [], 0.05)[0]:
+                try:
+                    os.read(master, 65536)
+                except OSError:
+                    return
+
+    drain(1.2)
+    t0 = time.time()
+    if how == "q":
+        os.write(master, b"q")
+    elif how == "term":
+        p.terminate()
+    else:
+        os.close(master)
+        master = None
+    if master is not None:
+        drain(10)
+    try:
+        code = p.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        code = -9
+    elapsed = time.time() - t0
+    if master is not None:
+        os.close(master)
+    return code, elapsed
 
 
 if __name__ == "__main__":

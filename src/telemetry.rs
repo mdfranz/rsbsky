@@ -24,7 +24,7 @@ pub fn requested() -> bool {
 }
 
 /// Holds the exporter for the life of the process. Call [`Telemetry::shutdown`] before
-/// exiting: `std::process::exit` skips destructors, so dropping is not enough to flush.
+/// exiting: `std::process::exit` skips destructors, so the `Drop` flush only covers unwinding.
 pub struct Telemetry {
     #[cfg(feature = "logfire")]
     inner: Option<logfire::Logfire>,
@@ -73,9 +73,13 @@ impl Telemetry {
     }
 
     /// Flushes pending spans, waiting at most a few seconds.
-    pub fn shutdown(self) {
+    pub fn shutdown(mut self) {
+        self.flush();
+    }
+
+    fn flush(&mut self) {
         #[cfg(feature = "logfire")]
-        if let Some(l) = self.inner {
+        if let Some(l) = self.inner.take() {
             let (tx, rx) = std::sync::mpsc::channel();
             std::thread::spawn(move || {
                 let _ = tx.send(l.shutdown());
@@ -84,6 +88,14 @@ impl Telemetry {
                 // collector unreachable or slow: give up rather than delay exit
             }
         }
+    }
+}
+
+/// A panic unwinds past the explicit [`Telemetry::shutdown`] call; flushing here keeps the
+/// spans that explain it. Normal exits have already flushed, so this does nothing for them.
+impl Drop for Telemetry {
+    fn drop(&mut self) {
+        self.flush();
     }
 }
 

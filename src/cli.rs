@@ -303,20 +303,23 @@ pub async fn real_main() -> i32 {
     code
 }
 
-/// Runs the command and prints its failure, returning the exit status.
+/// Runs the command and prints its failure, returning the exit status. Not `eprintln!`, which
+/// panics if stderr is gone (a closed terminal) and would lose the exit status and telemetry.
 async fn run_reporting(cli: Cli, out: &mut dyn Write) -> i32 {
+    let mut err = std::io::stderr();
     match run(cli, out).await {
         Ok(()) => 0,
         Err(CliError::Plain(m)) => {
-            eprintln!("{m}");
+            let _ = writeln!(err, "{m}");
             1
         }
         Err(CliError::Failure(m)) => {
-            eprintln!("error: {}", sanitize(&m));
+            let _ = writeln!(err, "error: {}", sanitize(&m));
             1
         }
         Err(CliError::Usage(m)) => {
-            eprintln!(
+            let _ = writeln!(
+                err,
                 "error: {}\n\nFor more information, try '--help'.",
                 sanitize(&m)
             );
