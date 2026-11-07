@@ -1,7 +1,9 @@
 //! Colour themes (port of Go `internal/tui/theme.go`) and the `themes` preview.
 //!
 //! Differences: Go asks the terminal for its background colour (OSC 11) to resolve
-//! "adaptive" colours; here the background is guessed from `COLORFGBG` and defaults to dark.
+//! "adaptive" colours; here the background is read from `COLORFGBG`, with no terminal query.
+//! When that is not set the background is unknown, and `auto` uses colours readable on both
+//! white and black; the other adaptive theme (`catppuccin`) assumes dark.
 //! `NO_COLOR` (non-empty) removes every colour; bold/italic/reverse remain.
 
 use std::io::Write;
@@ -69,6 +71,54 @@ fn pick(dark_bg: bool, dark: &str, light: &str) -> Option<Color> {
 
 const DARK_FRESH: [u8; 9] = [213, 177, 141, 105, 69, 61, 60, 59, 238];
 const LIGHT_FRESH: [u8; 9] = [201, 165, 129, 93, 63, 103, 145, 188, 252];
+/// Fades towards the neutral dim gray rather than into a background we cannot see.
+const NEUTRAL_FRESH: [u8; 9] = [201, 165, 129, 93, 99, 105, 103, 102, 243];
+
+/// What is known about the terminal's background.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Background {
+    Dark,
+    Light,
+    Unknown,
+}
+
+/// Fixed 256-colour indices, not the 16 palette colours: those are whatever the terminal's
+/// palette says, and in many light palettes colour 8 (dim) is near white, which made unselected
+/// posts invisible. Each passes 4.5:1 against white.
+fn light_theme(name: &'static str) -> Theme {
+    Theme {
+        name,
+        text: None,
+        dim: Some(Color::Indexed(242)),
+        warn: Some(Color::Indexed(130)),
+        error: Some(Color::Indexed(160)),
+        ok: Some(Color::Indexed(28)),
+        heading: Some(Color::Indexed(24)),
+        accent: Some(Color::Indexed(127)),
+        sel_bg: Some(Color::Indexed(254)),
+        fresh: idx(&LIGHT_FRESH),
+        color: true,
+    }
+}
+
+/// For an unknown background: fixed colours that read at 3.9:1 or better on both white and
+/// black (about 4.6:1 is the most any colour can manage on both; red tops out just under 4:1,
+/// with 196), and reverse video for the selection, which follows the terminal's own colours.
+fn neutral_theme(name: &'static str) -> Theme {
+    Theme {
+        name,
+        text: None,
+        dim: Some(Color::Indexed(243)),
+        warn: Some(Color::Indexed(130)),
+        error: Some(Color::Indexed(196)),
+        ok: Some(Color::Indexed(28)),
+        heading: Some(Color::Indexed(30)),
+        accent: Some(Color::Indexed(163)),
+        sel_bg: None,
+        fresh: idx(&NEUTRAL_FRESH),
+        color: true,
+    }
+}
 
 fn ansi_theme(name: &'static str, sel_bg: Option<Color>, fresh: Vec<Color>) -> Theme {
     Theme {
@@ -87,13 +137,25 @@ fn ansi_theme(name: &'static str, sel_bg: Option<Color>, fresh: Vec<Color>) -> T
 }
 
 impl Theme {
-    /// Builds a named theme. `dark_bg` resolves adaptive colours; `color` false (NO_COLOR)
-    /// strips them all.
+    /// Builds a named theme for a known background. `dark_bg` resolves adaptive colours;
+    /// `color` false (NO_COLOR) strips them all.
     pub fn named(name: &str, dark_bg: bool, color: bool) -> Theme {
+        let bg = if dark_bg {
+            Background::Dark
+        } else {
+            Background::Light
+        };
+        Theme::for_background(name, bg, color)
+    }
+
+    /// Builds a named theme. Only `auto` treats an unknown background differently; the
+    /// other adaptive theme assumes dark.
+    pub fn for_background(name: &str, bg: Background, color: bool) -> Theme {
         let name = by_name(name).unwrap_or("auto");
+        let dark_bg = bg != Background::Light;
         let mut t = match name {
             "dark" => ansi_theme("dark", Some(Color::Indexed(236)), idx(&DARK_FRESH)),
-            "light" => ansi_theme("light", Some(Color::Indexed(254)), idx(&LIGHT_FRESH)),
+            "light" => light_theme("light"),
             "ansi" => ansi_theme("ansi", None, idx(&[13, 5, 8])),
             "dracula" => Theme {
                 name: "dracula",
@@ -132,13 +194,15 @@ impl Theme {
                 color: true,
             },
             _ => {
-                // auto: ANSI roles, adaptive selection and fade ramp
-                let fresh = if dark_bg { DARK_FRESH } else { LIGHT_FRESH };
-                ansi_theme(
-                    "auto",
-                    Some(Color::Indexed(if dark_bg { 236 } else { 254 })),
-                    idx(&fresh),
-                )
+                // auto: the dark theme on a dark background, the light one on a light one,
+                // and colours that work on both when we cannot tell
+                match bg {
+                    Background::Dark => {
+                        ansi_theme("auto", Some(Color::Indexed(236)), idx(&DARK_FRESH))
+                    }
+                    Background::Light => light_theme("auto"),
+                    Background::Unknown => neutral_theme("auto"),
+                }
             }
         };
         if !color {
@@ -197,17 +261,22 @@ pub fn color_enabled() -> bool {
     std::env::var_os("NO_COLOR").is_none_or(|v| v.is_empty())
 }
 
-/// Best guess at a dark terminal background: `COLORFGBG` ("fg;bg"), else dark.
-pub fn dark_background() -> bool {
-    std::env::var("COLORFGBG")
-        .ok()
-        .and_then(|v| v.rsplit(';').next().and_then(|b| b.parse::<u8>().ok()))
-        .is_none_or(|bg| bg < 7 || bg == 8)
+/// The terminal's background from `COLORFGBG` ("fg;bg", or "fg;other;bg"), if it says.
+pub fn background() -> Background {
+    parse_colorfgbg(std::env::var("COLORFGBG").ok().as_deref())
 }
 
-/// The active theme for `name`, honouring `NO_COLOR` and the background guess.
+fn parse_colorfgbg(value: Option<&str>) -> Background {
+    match value.and_then(|v| v.rsplit(';').next()?.trim().parse::<u8>().ok()) {
+        Some(bg) if bg < 7 || bg == 8 => Background::Dark,
+        Some(_) => Background::Light,
+        None => Background::Unknown,
+    }
+}
+
+/// The active theme for `name`, honouring `NO_COLOR` and what is known of the background.
 pub fn active(name: &str) -> Theme {
-    Theme::named(name, dark_background(), color_enabled())
+    Theme::for_background(name, background(), color_enabled())
 }
 
 fn sgr(style: Style) -> String {
@@ -251,9 +320,9 @@ fn paint(style: Style, text: &str, ansi: bool) -> String {
 /// Previews every theme (the `themes` command). Colour is used only when `ansi` is true.
 pub fn print_themes(out: &mut dyn Write, ansi: bool) -> std::io::Result<()> {
     let color = color_enabled();
-    let dark = dark_background();
+    let bg = background();
     for name in NAMES {
-        let t = Theme::named(name, dark, color);
+        let t = Theme::for_background(name, bg, color);
         let ramp: String = t
             .fresh
             .iter()
@@ -284,6 +353,123 @@ pub fn print_themes(out: &mut dyn Write, ansi: bool) -> std::io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    /// The xterm RGB value of a 256-colour index from the fixed range (16..=255).
+    fn xterm_rgb(n: u8) -> (u8, u8, u8) {
+        assert!(n >= 16, "colours 0-15 depend on the terminal's palette");
+        if n >= 232 {
+            let v = 8 + 10 * (n - 232);
+            return (v, v, v);
+        }
+        let level = |c: u8| if c == 0 { 0 } else { 55 + 40 * c };
+        let i = n - 16;
+        (level(i / 36), level(i / 6 % 6), level(i % 6))
+    }
+
+    fn luminance(n: u8) -> f64 {
+        let lin = |c: u8| {
+            let c = f64::from(c) / 255.0;
+            if c <= 0.03928 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        let (r, g, b) = xterm_rgb(n);
+        0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+    }
+
+    /// WCAG contrast ratio against white.
+    fn contrast_on_white(n: u8) -> f64 {
+        1.05 / (luminance(n) + 0.05)
+    }
+
+    /// WCAG contrast ratio against black.
+    fn contrast_on_black(n: u8) -> f64 {
+        (luminance(n) + 0.05) / 0.05
+    }
+
+    fn roles(t: &Theme) -> [(&'static str, Option<Color>); 6] {
+        [
+            ("dim", t.dim),
+            ("warn", t.warn),
+            ("error", t.error),
+            ("ok", t.ok),
+            ("heading", t.heading),
+            ("accent", t.accent),
+        ]
+    }
+
+    fn fixed(role: &str, c: Option<Color>) -> u8 {
+        match c {
+            Some(Color::Indexed(n)) if n >= 16 => n,
+            _ => panic!("{role}: expected a fixed 256-colour index, got {c:?}"),
+        }
+    }
+
+    #[test]
+    fn auto_with_an_unknown_background_is_readable_on_white_and_black() {
+        let t = Theme::for_background("auto", Background::Unknown, true);
+        for (role, c) in roles(&t) {
+            let n = fixed(role, c);
+            let (w, k) = (contrast_on_white(n), contrast_on_black(n));
+            assert!(
+                w >= 3.9 && k >= 3.9,
+                "{role} (colour {n}) is {w:.1}:1 on white, {k:.1}:1 on black"
+            );
+        }
+        assert_eq!(t.text, None);
+        assert_eq!(
+            t.sel_bg, None,
+            "reverse video follows the terminal's own colours"
+        );
+        assert!(t.sel_style().add_modifier.contains(Modifier::REVERSED));
+    }
+
+    #[test]
+    fn auto_follows_a_known_background() {
+        let light = Theme::for_background("auto", Background::Light, true);
+        assert_eq!(
+            (light.name, light.dim),
+            ("auto", Theme::named("light", false, true).dim)
+        );
+        let dark = Theme::for_background("auto", Background::Dark, true);
+        assert_eq!(dark.sel_bg, Some(Color::Indexed(236)));
+        // only auto changes for an unknown background; catppuccin still assumes dark
+        assert_eq!(
+            Theme::for_background("catppuccin", Background::Unknown, true),
+            Theme::named("catppuccin", true, true)
+        );
+    }
+
+    #[test]
+    fn colorfgbg_says_dark_light_or_nothing() {
+        assert_eq!(parse_colorfgbg(None), Background::Unknown);
+        assert_eq!(parse_colorfgbg(Some("")), Background::Unknown);
+        assert_eq!(parse_colorfgbg(Some("15;0")), Background::Dark);
+        assert_eq!(parse_colorfgbg(Some("0;default;8")), Background::Dark);
+        assert_eq!(parse_colorfgbg(Some("0;15")), Background::Light);
+        assert_eq!(parse_colorfgbg(Some("0;7")), Background::Light);
+        assert_eq!(parse_colorfgbg(Some("15;default")), Background::Unknown);
+    }
+
+    #[test]
+    fn every_light_theme_colour_is_fixed_and_readable_on_white() {
+        let t = Theme::named("light", false, true);
+        for (role, c) in roles(&t) {
+            let n = fixed(role, c);
+            let ratio = contrast_on_white(n);
+            assert!(
+                ratio >= 4.5,
+                "{role} (colour {n}) is only {ratio:.1}:1 on white"
+            );
+        }
+        assert_eq!(
+            t.text, None,
+            "body text keeps the terminal's own foreground"
+        );
+        assert_eq!(xterm_rgb(242), (108, 108, 108));
+    }
+
     use super::*;
 
     #[test]

@@ -185,7 +185,7 @@ Two things cannot be seen: how long a key sat queued (crossterm events carry no 
 
 ### 9. Themes (`src/tui/theme.rs`)
 
-`auto`, `dark`, `light`, `ansi`, `dracula`, `catppuccin`. `--theme` wins over `BSKYBAN_THEME`, which wins over `auto`; names are case-insensitive. `NO_COLOR` clears every colour but keeps bold/italic/reverse and the `▸` marker. Adaptive colours need to know if the background is dark; the Go tool asks the terminal, rsbsky reads `COLORFGBG` and defaults to dark, which avoids a terminal query. `rsbsky themes` prints a preview that matches Go's byte for byte when piped.
+`auto`, `dark`, `light`, `ansi`, `dracula`, `catppuccin`. `--theme` wins over `BSKYBAN_THEME`, which wins over `auto`; names are case-insensitive. `NO_COLOR` clears every colour but keeps bold/italic/reverse and the `▸` marker. Adaptive colours need to know if the background is dark; the Go tool asks the terminal, rsbsky reads `COLORFGBG` and never queries the terminal. When `COLORFGBG` is not set the background is unknown: `auto` then uses fixed 256-colour roles that read at 3.9:1 or better on both white and black (no red does better than that on both), with a reverse-video selection, while `catppuccin` assumes dark. `light`, and `auto` on a known light background, use fixed colours that pass 4.5:1 on white rather than palette colours 0-15, which a terminal may map to anything (colour 8 is near white in some light palettes). `rsbsky themes` prints a preview that matches Go's byte for byte when piped.
 
 ## Data Flow
 
