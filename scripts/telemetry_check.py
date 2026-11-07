@@ -211,6 +211,10 @@ def main():
         check("TUI exports session and background-work spans", {"feed session", "load timeline page", "xrpc", "refresh check", "moderation action", "fetch profile", "fetch recent posts"} <= names, names)
         leaked = [s.decode() for s in SECRETS if s in col.everything()]
         check("TUI exports contain no identities", not leaked, leaked)
+        metrics = b"".join(r["body"] for r in col.requests if r["path"].endswith("/v1/metrics"))
+        check("TUI exports its responsiveness histograms", all(n in metrics for n in [b"ui.turn.duration", b"ui.effects.duration", b"ui.draw.duration", b"ui.result.wait"]), metrics[:200])
+        check("...labelled by what woke the loop", all(n in metrics for n in [b"start", b"key", b"result", b"refresh"]), metrics[:200])
+        check("...and by task", all(n in metrics for n in [b"timeline_page", b"refresh_check", b"profile", b"action"]), metrics[:200])
         dead_screen = tui_run(binp, pds, dead, tmp())
         check("TUI with an unreachable collector still quits promptly", dead_screen["code"] == 0 and dead_screen["elapsed"] < 8, (dead_screen["code"], dead_screen["elapsed"]))
         check("...and prints nothing extra on screen", not re.search(rb"logfire|opentelemetry|\botel\b", dead_screen["bytes"], re.I), dead_screen["bytes"][:300])

@@ -10,7 +10,7 @@ use std::mem::ManuallyDrop;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crossterm::event::{Event, EventStream, KeyEventKind};
+use crossterm::event::{Event, EventStream, KeyEvent, KeyEventKind};
 use crossterm::execute;
 use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
@@ -31,6 +31,7 @@ use super::picker::open_url;
 use super::render::render;
 use crate::bsky::Client;
 use crate::store::Audit;
+use crate::telemetry::{self, Turn};
 
 /// Puts the terminal in raw mode on the alternate screen and restores it on drop, whether
 /// the program ends normally, with an error, or by unwinding from a panic.
@@ -116,6 +117,25 @@ async fn tick_or_pending(i: &mut Option<Interval>) {
     }
 }
 
+/// A background task's message, with what is needed to time it.
+struct Done {
+    msg: Msg,
+    task: &'static str,
+    started: Instant,
+}
+
+/// What ended the wait at the bottom of the loop. Handling happens after the `select!`, so that
+/// the turn's clock covers it whichever branch fired.
+enum Wake {
+    Key(KeyEvent),
+    Done(Done),
+    Msg(&'static str, Msg),
+    Other,
+}
+
+/// What reads and writes fail with once the terminal is gone.
+const EIO: i32 = 5;
+
 /// How long exit may wait for aborted tasks to unwind.
 const DRAIN_BUDGET: Duration = Duration::from_secs(1);
 
@@ -130,7 +150,14 @@ pub async fn run(app: FeedApp, client: Client, audit: Audit) -> io::Result<()> {
     tasks.abort_all();
     let drained = async { while tasks.join_next().await.is_some() {} };
     let _ = tokio::time::timeout(DRAIN_BUDGET, drained).await;
-    result
+
+    // Closing the terminal ends a session as surely as `q`, and which is noticed first, SIGHUP
+    // or a failed redraw, is a race. There is nobody left to show the error to. Only terminal
+    // I/O can fail here: audit and state errors are handled inside the loop.
+    match result {
+        Err(e) if e.raw_os_error() == Some(EIO) => Ok(()),
+        other => other,
+    }
 }
 
 async fn event_loop(
@@ -150,7 +177,7 @@ async fn event_loop(
     let size = terminal.size()?;
     app.on_msg(Msg::Resize(size.width, size.height), Now::current());
 
-    let (tx, mut rx) = mpsc::unbounded_channel::<Msg>();
+    let (tx, mut rx) = mpsc::unbounded_channel::<Done>();
     let mut events = EventStream::new();
     let mut refresh = (!app.refresh.is_zero()).then(|| {
         let mut i = interval_at(Instant::now() + app.refresh, app.refresh);
@@ -165,8 +192,14 @@ async fn event_loop(
 
     let mut pending = app.start();
     let mut quit = false;
+    let mut turn = Turn {
+        cause: "start",
+        ..Turn::default()
+    };
+    let mut waited: Option<(&'static str, Instant)> = None;
     loop {
         // perform effects
+        let phase = Instant::now();
         for effect in std::mem::take(&mut pending) {
             match effect {
                 Effect::Quit => quit = true,
@@ -177,6 +210,7 @@ async fn event_loop(
                     }
                 }
                 Effect::FetchProfile { did } => {
+                    let started = Instant::now();
                     let (c1, tx1, d1) = (client.clone(), tx.clone(), did.clone());
                     let span = tracing::info_span!("fetch profile", logfire.msg = "fetch profile");
                     tasks.spawn(
@@ -186,7 +220,12 @@ async fn event_loop(
                                 .await
                                 .map(Box::new)
                                 .map_err(|e| e.to_string());
-                            let _ = tx1.send(Msg::Profile { did: d1, result });
+                            let msg = Msg::Profile { did: d1, result };
+                            let _ = tx1.send(Done {
+                                msg,
+                                task: "profile",
+                                started,
+                            });
                         }
                         .instrument(span),
                     );
@@ -201,7 +240,12 @@ async fn event_loop(
                                 .get_recent_posts(&did, RECENT_POSTS)
                                 .await
                                 .map_err(|e| e.to_string());
-                            let _ = tx.send(Msg::Posts { did, result });
+                            let msg = Msg::Posts { did, result };
+                            let _ = tx.send(Done {
+                                msg,
+                                task: "recent_posts",
+                                started,
+                            });
                         }
                         .instrument(span),
                     );
@@ -228,6 +272,7 @@ async fn event_loop(
                 Effect::Act(req) => {
                     // Not aborted on quit while busy: the loop keeps running until the result
                     // arrives, so the action is always saved and audited.
+                    let started = Instant::now();
                     let (c, tx) = (client.clone(), tx.clone());
                     let kind = req.kind();
                     let span = tracing::info_span!(
@@ -243,12 +288,18 @@ async fn event_loop(
                             let span = tracing::Span::current();
                             span.record("outcome", if msg.err.is_none() { "ok" } else { "error" });
                             span.record("lifted", msg.lifted);
-                            let _ = tx.send(Msg::Act(Box::new(msg)));
+                            let msg = Msg::Act(Box::new(msg));
+                            let _ = tx.send(Done {
+                                msg,
+                                task: "action",
+                                started,
+                            });
                         }
                         .instrument(span),
                     );
                 }
                 Effect::LoadFollows { req, actor, cursor } => {
+                    let started = Instant::now();
                     let (c, tx) = (client.clone(), tx.clone());
                     let span = tracing::info_span!(
                         "load follows page",
@@ -261,12 +312,18 @@ async fn event_loop(
                                 .get_follows_page(&actor, &cursor)
                                 .await
                                 .map_err(|e| e.to_string());
-                            let _ = tx.send(Msg::FollowsPage { req, result });
+                            let msg = Msg::FollowsPage { req, result };
+                            let _ = tx.send(Done {
+                                msg,
+                                task: "follows_page",
+                                started,
+                            });
                         }
                         .instrument(span),
                     );
                 }
                 Effect::LoadPage { id, cursor } => {
+                    let started = Instant::now();
                     let (c, tx) = (client.clone(), tx.clone());
                     let span = tracing::info_span!(
                         "load timeline page",
@@ -283,12 +340,18 @@ async fn event_loop(
                             if let Ok((items, _)) = &result {
                                 tracing::Span::current().record("items", items.len());
                             }
-                            let _ = tx.send(Msg::Page { id, result });
+                            let msg = Msg::Page { id, result };
+                            let _ = tx.send(Done {
+                                msg,
+                                task: "timeline_page",
+                                started,
+                            });
                         }
                         .instrument(span),
                     );
                 }
                 Effect::Check { id, manual, known } => {
+                    let started = Instant::now();
                     let (c, tx) = (client.clone(), tx.clone());
                     let span = tracing::info_span!(
                         "refresh check",
@@ -312,18 +375,25 @@ async fn event_loop(
                                     span.record("outcome", "error");
                                 }
                             }
-                            let _ = tx.send(Msg::Check { id, manual, result });
+                            let msg = Msg::Check { id, manual, result };
+                            let _ = tx.send(Done {
+                                msg,
+                                task: "refresh_check",
+                                started,
+                            });
                         }
                         .instrument(span),
                     );
                 }
             }
         }
+        turn.effects = phase.elapsed();
         if quit {
             break;
         }
 
         // draw, then lay hyperlinks over the flushed frame
+        let phase = Instant::now();
         let now = Now::current();
         let mut regions = Vec::new();
         let frame = terminal.draw(|f| regions = render(&app, f.buffer_mut(), now))?;
@@ -333,6 +403,11 @@ async fn event_loop(
             w.write_all(&bytes)?;
             w.flush()?;
         }
+        turn.draw = phase.elapsed();
+        telemetry::record_turn(&turn);
+        if let Some((task, started)) = waited.take() {
+            telemetry::record_result_wait(task, started.elapsed());
+        }
 
         let anim_sleep = async {
             match anim_at {
@@ -340,27 +415,43 @@ async fn event_loop(
                 None => std::future::pending().await,
             }
         };
-        let msgs: Vec<Msg> = tokio::select! {
+        let wake = tokio::select! {
             ev = events.next() => match ev {
-                Some(Ok(Event::Key(k))) if k.kind != KeyEventKind::Release => {
-                    pending.extend(app.on_key(k, Now::current()));
-                    Vec::new()
-                }
-                Some(Ok(Event::Resize(w, h))) => vec![Msg::Resize(w, h)],
-                Some(Ok(_)) => Vec::new(),
+                Some(Ok(Event::Key(k))) if k.kind != KeyEventKind::Release => Wake::Key(k),
+                Some(Ok(Event::Resize(w, h))) => Wake::Msg("resize", Msg::Resize(w, h)),
+                Some(Ok(_)) => Wake::Other,
                 Some(Err(e)) => return Err(e),
                 None => break, // input closed
             },
-            Some(m) = rx.recv() => vec![m],
-            _ = tick_or_pending(&mut refresh) => vec![Msg::RefreshTick],
-            _ = spin.tick(), if app.needs_spin() => vec![Msg::SpinTick],
-            _ = anim_sleep => { anim_at = None; vec![Msg::AnimTick] },
-            _ = sigterm.recv() => { quit = true; Vec::new() },
-            _ = sighup.recv() => { quit = true; Vec::new() },
+            Some(d) = rx.recv() => Wake::Done(d),
+            _ = tick_or_pending(&mut refresh) => Wake::Msg("refresh", Msg::RefreshTick),
+            _ = spin.tick(), if app.needs_spin() => Wake::Msg("spin", Msg::SpinTick),
+            _ = anim_sleep => { anim_at = None; Wake::Msg("anim", Msg::AnimTick) },
+            _ = sigterm.recv() => { quit = true; Wake::Other },
+            _ = sighup.recv() => { quit = true; Wake::Other },
         };
-        for m in msgs {
-            pending.extend(app.on_msg(m, Now::current()));
-        }
+        let woke = Instant::now();
+        let cause = match wake {
+            Wake::Key(k) => {
+                pending.extend(app.on_key(k, Now::current()));
+                "key"
+            }
+            Wake::Done(d) => {
+                waited = Some((d.task, d.started));
+                pending.extend(app.on_msg(d.msg, Now::current()));
+                "result"
+            }
+            Wake::Msg(cause, m) => {
+                pending.extend(app.on_msg(m, Now::current()));
+                cause
+            }
+            Wake::Other => "other",
+        };
+        turn = Turn {
+            cause,
+            handle: woke.elapsed(),
+            ..Turn::default()
+        };
         if quit {
             break;
         }
