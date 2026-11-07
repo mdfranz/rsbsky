@@ -3,7 +3,7 @@
 
 Verifies that with LOGFIRE_TOKEN set rsbsky exports spans, and, as importantly, that it
   * is completely inert without a token (no connections, identical behaviour),
-  * never leaks credentials, handles, DIDs or post text,
+  * never leaks credentials, handles, DIDs or post text, apart from the links the user opens,
   * never changes stdout / stderr / exit status of any command,
   * does not hang or print anything when the collector is unreachable,
   * does not draw on the terminal while the TUI is running,
@@ -11,7 +11,7 @@ Verifies that with LOGFIRE_TOKEN set rsbsky exports spans, and, as importantly, 
 
   telemetry_check.py --bin target/debug/rsbsky
 """
-import argparse, gzip, os, pty, re, select, shutil, struct, subprocess, sys, tempfile, threading, time, fcntl, termios
+import argparse, gzip, json, os, pty, re, select, shutil, struct, subprocess, sys, tempfile, threading, time, fcntl, termios
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -219,6 +219,37 @@ def main():
         check("TUI with an unreachable collector still quits promptly", dead_screen["code"] == 0 and dead_screen["elapsed"] < 8, (dead_screen["code"], dead_screen["elapsed"]))
         check("...and prints nothing extra on screen", not re.search(rb"logfire|opentelemetry|\botel\b", dead_screen["bytes"], re.I), dead_screen["bytes"][:300])
 
+        # ---- 7b. links the user opens are the one URL exported; browsing alone exports none
+        check("TUI without opening anything exports no URL", b"https://" not in col.everything() and b"url.full" not in col.everything())
+        opens = [(b"o", 0.4), (b"o", 0.6)]  # the post's links, then the first of them
+        col.requests.clear()
+        opened = tui_run(binp, pds, dict(tel, BROWSER="/bin/true"), tmp(), opens)
+        time.sleep(0.5)
+        tr = col.everything()  # events travel as logs, not spans
+        check("an opened link is exported in full, with how it was opened", opened["code"] == 0 and all(s in tr for s in [b"open link", b"url.full", b"https://bsky.app/", b"via"]), sorted({x["path"] for x in col.requests}))
+        leaked = [s.decode() for s in [b"Bearer", b"JWT", b"password", b"identifier", b"first post by A", b"Alice", TOKEN.encode()] if s in col.everything()]
+        check("...with no credentials or post text beside it", not leaked, leaked)
+        col.requests.clear()
+        t = tmp()
+        failed = tui_run(binp, pds, dict(tel, BROWSER="/nonexistent/browser"), t, opens)
+        audit = [json.loads(l) for l in open(t + "/audit.jsonl")]
+        check("a link that fails to open is audited locally as a failure", [(a["action"], a["ok"], bool(a.get("error"))) for a in audit] == [("open", False, True)], audit)
+        time.sleep(0.5)
+        check("a link that fails to open is exported as an error", failed["code"] == 0 and re.search(rb"outcome.{2,8}error", col.everything(), re.S) is not None and b"/nonexistent" not in col.everything(), sorted({x["path"] for x in col.requests}))
+
+        # links are also kept locally, with or without Logfire
+        for label, env in [("with Logfire", tel), ("without Logfire", {})]:
+            t = tmp()
+            r = tui_run(binp, pds, dict(env, BROWSER="/bin/true"), t, opens)
+            try:
+                audit = [json.loads(l) for l in open(t + "/audit.jsonl")]
+            except OSError:
+                audit = []
+            opened_urls = [a["detail"] for a in audit if a["action"] == "open" and a["ok"] and a["source"] == "tui:following"]
+            check("%s: an opened link is audited locally with its URL" % label, r["code"] == 0 and len(opened_urls) == 1 and opened_urls[0].startswith("open link: https://"), audit)
+            shown = run(binp, ["log", "--action", "open"], pds, t)
+            check("%s: `rsbsky log --action open` lists it" % label, shown[0] == 0 and opened_urls and opened_urls[0] in shown[1], shown[:2])
+
         # ---- 8. every way of ending a session must close it. `exit_code` is the signal: span
         # names prove nothing, because a pending copy of each span is exported when it opens.
         slow = [dict(r) for r in tui_timeline()]
@@ -251,8 +282,9 @@ def finish(pds, col, tmps):
     sys.exit(1 if FAILS else 0)
 
 
-def tui_run(binp, pds, extra_env, tmp):
-    """Runs the TUI on a pty for a moment, presses Down then q, and returns the raw output."""
+def tui_run(binp, pds, extra_env, tmp, script=None):
+    """Runs the TUI on a pty for a moment, presses Down then q, and returns the raw output.
+    `script` replaces the keys pressed before q, as (bytes, seconds to wait after) pairs."""
     env = {"PATH": "/usr/bin:/bin", "HOME": tmp, "TZ": "UTC", "TERM": "xterm-256color", "BSKY_HANDLE": "me.test",
            "BSKY_APP_PASSWORD": "pw", "BSKY_PDS": pds.url, "BSKYBAN_STATE": tmp + "/state.json",
            "BSKYBAN_AUDIT": tmp + "/audit.jsonl", "BROWSER": "/bin/true"}
@@ -278,16 +310,13 @@ def tui_run(binp, pds, extra_env, tmp):
                 buf += chunk
 
     read(2.0)
-    os.write(master, b"\x1b[B")  # Down
-    read(0.4)
-    os.write(master, b"\x1b[C")  # Right: detail view, prefetches profiles
-    read(1.0)
-    os.write(master, b"\x1b")  # Esc
-    read(0.3)
-    os.write(master, b"k")  # keep: a local decision, traced as a moderation action
-    read(0.6)
-    os.write(master, b"R")  # manual refresh
-    read(1.0)
+    for keys, wait in script or [(b"\x1b[B", 0.4),  # Down
+                                 (b"\x1b[C", 1.0),  # Right: detail view, prefetches profiles
+                                 (b"\x1b", 0.3),  # Esc
+                                 (b"k", 0.6),  # keep: a local decision, traced as a moderation action
+                                 (b"R", 1.0)]:  # manual refresh
+        os.write(master, keys)
+        read(wait)
     t0 = time.time()
     os.write(master, b"q")
     try:

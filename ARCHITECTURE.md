@@ -181,6 +181,8 @@ Two things cannot be seen: how long a key sat queued (crossterm events carry no 
 
 **Privacy by construction.** Spans and metrics carry only operation names, status codes, outcomes, error codes, counts, durations and fixed labels; a turn records that a key caused it, never which key. Request URLs, queries and bodies (which hold the app password, DIDs and handles), tokens, post text and API error *messages* are never recorded. `scripts/telemetry_check.py` enforces this against a fake OTLP collector: it greps every exported byte for the password, bearer token, handles, DIDs and post text used by the fixtures.
 
+**The one deliberate exception.** `telemetry::record_open` sends the full URL of each link the user opens from the TUI, as `url.full` on an `open link` event, with `via` and `outcome`. Every open goes through `Effect::Open`, so this is its only call site. Those URLs can hold handles and DIDs (a bsky.app post or profile link) and add up to a reading history, which is the point of them. Nothing else exports a URL, and the check confirms a session that opens no links exports none. The same opens are also appended to the local audit log as `open` events (`detail` is how it was opened and the URL, `ok`/`error` the outcome), so the record exists without Logfire; `rsbsky log --action open` lists them.
+
 ### 9. Themes (`src/tui/theme.rs`)
 
 `auto`, `dark`, `light`, `ansi`, `dracula`, `catppuccin`. `--theme` wins over `BSKYBAN_THEME`, which wins over `auto`; names are case-insensitive. `NO_COLOR` clears every colour but keeps bold/italic/reverse and the `▸` marker. Adaptive colours need to know if the background is dark; the Go tool asks the terminal, rsbsky reads `COLORFGBG` and defaults to dark, which avoids a terminal query. `rsbsky themes` prints a preview that matches Go's byte for byte when piped.
@@ -202,7 +204,7 @@ Two things cannot be seen: how long a key sat queued (crossterm events carry no 
 - **Everything is reversible and recorded.** Decisions can be undone; every attempt, including failures and dry runs, is in the audit log with the profile as it was.
 - **Remote data is untrusted.** Text is sanitized at the edge (JSON decoding, error messages) and again before display; styling and hyperlinks are added only to clean text, and link targets containing control characters are never emitted.
 - **Local state cannot be half-written or silently diverge.** Atomic rename, append-only audit, in-memory rollback when a save fails, and a retry path when a save fails after a remote success.
-- **Observability is opt-in and invisible.** Nothing is exported without `LOGFIRE_TOKEN`; with it, output, exit status and the screen are unchanged and identities are never sent.
+- **Observability is opt-in and invisible.** Nothing is exported without `LOGFIRE_TOKEN`; with it, output, exit status and the screen are unchanged and identities are never sent, except inside links the user opens.
 - **Terminal hygiene.** The terminal is restored after quit, Ctrl+C, SIGTERM, runtime errors and panics; startup sends no queries; hyperlinks are cleared when they go away.
 - **Known duplication** (inherited from Go): the headless commands and the TUI each implement "decide about an account" (`commands::Ctx::act` and `tui::actions`) and share only the helpers in `app.rs`.
 

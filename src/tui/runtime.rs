@@ -31,6 +31,7 @@ use super::picker::open_url;
 use super::render::render;
 use crate::bsky::Client;
 use crate::store::Audit;
+use crate::store::audit::AuditEvent;
 use crate::telemetry::{self, Turn};
 
 /// Puts the terminal in raw mode on the alternate screen and restores it on drop, whether
@@ -255,10 +256,34 @@ async fn event_loop(
                     status,
                     err_prefix,
                 } => {
-                    // launching is non-blocking; stop at the first failure like Go does
+                    // launching is non-blocking; stop at the first failure
                     let result = urls
                         .iter()
-                        .try_for_each(|u| open_url(u))
+                        .try_for_each(|u| {
+                            let opened = open_url(u);
+                            telemetry::record_open(u, err_prefix, opened.is_ok());
+                            // the local record, kept whether or not Logfire is on
+                            let ev = AuditEvent {
+                                action: "open".into(),
+                                did: app.me_did.clone(),
+                                handle: app.me_handle.clone(),
+                                source: "tui:following".into(),
+                                detail: format!("{err_prefix}: {u}"),
+                                ok: opened.is_ok(),
+                                error: opened
+                                    .as_ref()
+                                    .err()
+                                    .map(|e| e.to_string())
+                                    .unwrap_or_default(),
+                                ..Default::default()
+                            };
+                            if let Err(e) = audit.log(ev) {
+                                pending.extend(
+                                    app.on_msg(Msg::AuditFailed(e.to_string()), Now::current()),
+                                );
+                            }
+                            opened
+                        })
                         .map_err(|e| e.to_string());
                     pending.extend(app.on_msg(
                         Msg::OpenDone {

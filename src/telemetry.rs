@@ -12,6 +12,9 @@
 //! was caused by a key), or error messages that could contain them. The console exporter is
 //! disabled, so the terminal UI is never drawn over.
 //!
+//! The one exception is [`record_open`]: the links the user chooses to open are sent in full,
+//! and those can contain handles and DIDs. API request URLs stay private.
+//!
 //! Standard Logfire environment variables apply (`LOGFIRE_SERVICE_NAME`,
 //! `LOGFIRE_ENVIRONMENT`, `LOGFIRE_BASE_URL`, `LOGFIRE_SEND_TO_LOGFIRE`, `RUST_LOG`).
 
@@ -78,6 +81,17 @@ pub fn record_result_wait(task: &'static str, wait: Duration) {
     }
     #[cfg(not(feature = "logfire"))]
     let _ = (task, wait);
+}
+
+/// Records a link the user chose to open, in full: the only URL rsbsky exports, and only ever
+/// from this deliberate action. `via` is how it was opened; the launcher's error is not sent.
+pub fn record_open(url: &str, via: &'static str, opened: bool) {
+    tracing::info!(
+        url.full = url,
+        via,
+        outcome = if opened { "ok" } else { "error" },
+        "open link"
+    );
 }
 
 /// Scale 4 keeps quantiles within about 5% and adapts its range to the data, so there are no

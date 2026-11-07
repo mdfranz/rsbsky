@@ -29,8 +29,11 @@ LOGFIRE_TOKEN=... LOGFIRE_ENVIRONMENT=dev rsbsky feed
 * **Sent:** the command name, one span per API call (operation such as `app.bsky.feed.getTimeline`, HTTP status,
   outcome, XRPC error *code*), TUI background work (timeline pages, refresh checks with the number of new posts,
   moderation actions by kind and outcome), exit code, durations, `service.name=rsbsky`, `service.version`.
-* **Never sent:** the app password, access tokens, URLs, hostnames or IP addresses, request bodies, handles, DIDs, post
-  text or error messages. Dependencies' own debug events (HTTP connection pooling, TLS) are filtered out by
+* **Sent only when you open a link:** the full URL of each link you open from the TUI, as `url.full`, with how it was
+  opened and whether it worked. These can contain handles and DIDs, and together they are a record of what you read.
+  The same links are always kept locally in the audit log, with or without Logfire: `rsbsky log --action open`.
+* **Never sent otherwise:** the app password, access tokens, API request URLs, hostnames or IP addresses, request
+  bodies, handles, DIDs, post text or error messages. Dependencies' own debug events (HTTP connection pooling, TLS) are filtered out by
   capping the level at `INFO`; `RUST_LOG` overrides that when you want to debug.
   The tests inspect the exact exported bytes for this (`make telemetry-check`).
 * **Never on screen:** console output is disabled, so the TUI is not drawn over; an unreachable collector does not
